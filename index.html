@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Időjárás App</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <header>
+    <h1>🌦️ 5 Napos Időjárás Előrejelzés</h1>
+  </header>
+
+  <main>
+    <section class="search-section">
+      <input type="text" id="cityInput" placeholder="Város neve..." />
+      <button id="searchBtn">Keresés</button>
+    </section>
+
+    <section id="historySection">
+      <h3>🔍 Korábbi keresések:</h3>
+      <ul id="historyList"></ul>
+    </section>
+
+    <section id="weatherSection">
+         <div id="weatherCardsWrapper"></div>
+    </section>
+
+    <section id="hourlySection" style="display: none;">
+      <h3 id="hourlyTitle">Óránkénti előrejelzés:</h3>
+      <div id="hourlyDetails" class="hourly-scroll"></div>
+      <canvas id="tempChart" style="margin-top: 30px; max-width: 100%;"></canvas>
+    </section>
+
+    <section id="next24hSection" style="display: none;">
+      <h3>Következő 24 óra előrejelzés (3 óránként):</h3>
+      <div id="next24hDetails" class="hourly-scroll"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
