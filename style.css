@@ -40,11 +40,45 @@ body.light-mode {
   background: linear-gradient(135deg, #e9ecef 0%, #f7fafc 100%);
   color: #23272f;
 }
-body.light-mode header,
-body.light-mode main,
-body.light-mode section {
-  color: #23272f;
+body.light-mode h1,
+body.light-mode h3,
+body.light-mode h4,
+body.light-mode p,
+body.light-mode label,
+body.light-mode .weather-card h4,
+body.light-mode .weather-card p,
+body.light-mode .hourly-card p,
+body.light-mode #historyList li {
+  color: #23272f !important;
 }
+body.light-mode .weather-card,
+body.light-mode .hourly-card {
+  background: #fffbe6;
+  color: #23272f;
+  border-color: #e9ecef;
+  box-shadow: 0 8px 32px rgba(180,180,180,0.10);
+}
+body.light-mode .weather-card h4 {
+  color: #23272f !important;
+}
+body.light-mode .weather-card p {
+  color: #444 !important;
+}
+body.light-mode .weather-card p strong {
+  color: #23272f !important;
+}
+body.light-mode .hourly-card p {
+  color: #444 !important;
+}
+body.light-mode .hourly-card p strong {
+  color: #23272f !important;
+}
+body.light-mode #tempChart,
+body.light-mode .chartjs-render-monitor {
+  background: #23272f !important;
+  border-radius: 12px;
+  color: #23272f !important;
+  box-shadow: 0 2px 12px #c3cfe2;
 }
 body.light-mode #themeToggleBtn {
   background: #f7fafc;
@@ -53,28 +87,6 @@ body.light-mode #themeToggleBtn {
   border: 1px solid #e9ecef;
 }
 body.light-mode #themeToggleBtn:hover {
-  background: #ffe066;
-  color: #23272f;
-  border: 1px solid #ffe066;
-}
-body.light-mode .weather-card,
-body.light-mode .hourly-card {
-  background: #f7fafc;
-  color: #23272f;
-  border-color: #e9ecef;
-  box-shadow: 0 8px 32px rgba(180,180,180,0.10);
-}
-}
-body.light-mode .weather-card:hover {
-  border-color: #ffe066;
-  box-shadow: 0 16px 40px rgba(255,224,102,0.12);
-}
-body.light-mode #historyList li {
-  background: #f7fafc;
-  color: #23272f;
-  border: 1px solid #e9ecef;
-}
-body.light-mode #historyList li:hover {
   background: #ffe066;
   color: #23272f;
   border: 1px solid #ffe066;
@@ -101,11 +113,6 @@ body.light-mode #cityInput {
 body.light-mode #cityInput:focus {
   box-shadow: 0 0 12px #ffe06699;
   border: 1px solid #ffe066;
-}
-body.light-mode #tempChart,
-body.light-mode .chartjs-render-monitor {
-  background: #f7fafc !important;
-  border-radius: 12px;
 }
 
 main {
@@ -158,18 +165,19 @@ h1 {
 
 #searchBtn {
   padding: 10px 20px;
-  background-color: #444;
+  background: linear-gradient(90deg, #444 0%, #23272f 100%);
   border: none;
   border-radius: 8px;
   color: white;
   font-weight: 700;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background 0.3s, box-shadow 0.3s, transform 0.12s cubic-bezier(.23,1.01,.32,1);
 }
 
 #searchBtn:hover {
-  background-color: #222;
+  background: linear-gradient(90deg, #222 0%, #444 100%);
+  box-shadow: 0 4px 16px #23272f66;
 }
 
 /* Előzmények lista */
@@ -200,7 +208,7 @@ h1 {
 
 /* Fő időjárás kártyák */
 .weather-card {
-  background: #23272f;
+  background: linear-gradient(135deg, #23272f 0%, #2e3440 100%);
   border-radius: 18px;
   padding: 28px 16px 20px 16px;
   margin: 0;
@@ -222,8 +230,8 @@ h1 {
 }
 
 .weather-card:hover {
-  transform: translateY(-8px) scale(1.04);
-  box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+  transform: translateY(-8px) scale(1.07);
+  box-shadow: 0 24px 48px rgba(0,0,0,0.22);
   border-color: #ffe066;
 }
 
@@ -244,6 +252,10 @@ h1 {
   border: 2px solid #444;
   object-fit: contain;
   filter: drop-shadow(0 2px 6px #0008);
+  transition: transform 0.4s cubic-bezier(.23,1.01,.32,1);
+}
+.weather-card img:hover {
+  transform: scale(1.15) rotate(-8deg);
 }
 
 .weather-card p {
@@ -313,7 +325,7 @@ h1 {
 
 /* Óránkénti kártyák */
 .hourly-card {
-  background: #23272f;
+  background: linear-gradient(135deg, #23272f 0%, #2e3440 100%);
   border-radius: 18px;
   min-width: 90px;
   max-width: 90px;
@@ -346,6 +358,10 @@ h1 {
   border: 1px solid #444;
   object-fit: contain;
   filter: drop-shadow(0 1px 4px #0008);
+  transition: transform 0.4s cubic-bezier(.23,1.01,.32,1);
+}
+.hourly-card img:hover {
+  transform: scale(1.18) rotate(8deg);
 }
 
 .hourly-card p {
@@ -435,4 +451,16 @@ h1 {
 #weatherCardsWrapper::-webkit-scrollbar-thumb {
   background: #444;
   border-radius: 8px;
+}
+
+body.light-mode #historyList li {
+  background: #fffbe6;
+  color: #23272f !important;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 8px #ffe06644;
+}
+body.light-mode #historyList li:hover {
+  background: #ffe066;
+  color: #23272f !important;
+  border: 1px solid #ffe066;
 }
