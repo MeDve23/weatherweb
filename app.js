@@ -241,6 +241,10 @@ async function getWeather(city) {
 
     currentForecastData = forecastData;
 
+    // ...existing code...
+
+    // ...existing code...
+
     const { dailyData, days } = getDailySummary(forecastData);
 
     renderDailyCards(dailyData, days);
@@ -255,6 +259,8 @@ async function getWeather(city) {
     next24hDetails.innerHTML = '';
   }
 }
+
+// ...existing code...
 
 // Lokáció alapú időjárás lekérés oldal betöltésekor
 window.addEventListener('DOMContentLoaded', () => {

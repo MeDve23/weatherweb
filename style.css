@@ -29,6 +29,7 @@ body {
   box-shadow: 0 2px 12px #0005;
   transition: background 0.3s, color 0.3s, transform 0.18s;
 }
+
 #themeToggleBtn:hover {
   background: #444;
   color: #ffe066;
@@ -259,16 +260,15 @@ h1 {
 }
 
 .weather-card p {
-  color: #bfc4cc;
-  font-size: 1rem;
-  margin: 6px 0;
-  font-weight: 400;
-}
-
-.weather-card p strong {
-  color: #fff;
-  font-size: 1.2rem;
-  font-weight: 700;
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.10);
+    padding: 8px 12px 8px 12px;
+    min-width: 0;
+    max-width: 90%;
+    display: block;
+    margin: 6px auto 0 auto;
+    transition: box-shadow 0.2s;
 }
 
 /* Responsive design */
@@ -463,4 +463,50 @@ body.light-mode #historyList li:hover {
   background: #ffe066;
   color: #23272f !important;
   border: 1px solid #ffe066;
+}
+
+/* Footer stílus */
+.site-footer {
+  width: 100%;
+  text-align: center;
+  padding: 18px 0 10px 0;
+  font-size: 0.98rem;
+  color: #bfc4cc;
+  background: linear-gradient(90deg,#23272f 0%,#181818 100%);
+  box-shadow: 0 -2px 12px #23272f22;
+}
+.site-footer hr {
+  max-width: 220px;
+  margin: 12px auto 8px auto;
+  border: 0;
+  border-top: 1px solid #444;
+}
+.site-footer span {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 14px;
+  background: #23272f;
+  color: #bfc4cc;
+  font-weight: 500;
+  box-shadow: 0 1px 4px #23272f44;
+  font-size: 0.98rem;
+}
+.site-footer strong {
+  color: #ffe066;
+}
+body.light-mode .site-footer {
+  color: #23272f;
+  background: linear-gradient(90deg,#f7fafc 0%,#e9ecef 100%);
+  box-shadow: 0 -2px 12px #ffe06622;
+}
+body.light-mode .site-footer hr {
+  border-top: 1px solid #ffe066;
+}
+body.light-mode .site-footer span {
+  background: #fffbe6;
+  color: #23272f;
+  box-shadow: 0 2px 8px #ffe06644;
+}
+body.light-mode .site-footer strong {
+  color: #ffe066;
 }
