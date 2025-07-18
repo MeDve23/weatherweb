@@ -1,3 +1,22 @@
+// Téma váltás (sötét/világos mód)
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+function applyTheme(theme) {
+  if (theme === 'light') {
+    document.body.classList.add('light-mode');
+    themeToggleBtn.textContent = '🌙 Sötét mód';
+  } else {
+    document.body.classList.remove('light-mode');
+    themeToggleBtn.textContent = '☀️ Világos mód';
+  }
+  localStorage.setItem('weatherTheme', theme);
+}
+themeToggleBtn.addEventListener('click', () => {
+  const isLight = document.body.classList.contains('light-mode');
+  applyTheme(isLight ? 'dark' : 'light');
+});
+// Alapértelmezett téma betöltése
+const savedTheme = localStorage.getItem('weatherTheme');
+applyTheme(savedTheme === 'light' ? 'light' : 'dark');
 const apiKey = 'b0a8907870c84d43cd9995146a01778e'; // saját kulcsod
 
 const cityInput = document.getElementById('cityInput');
