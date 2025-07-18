@@ -37,62 +37,74 @@ body {
 
 /* Világos téma */
 body.light-mode {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  color: #181818;
+  background: linear-gradient(135deg, #e9ecef 0%, #f7fafc 100%);
+  color: #23272f;
 }
 body.light-mode header,
 body.light-mode main,
 body.light-mode section {
-  color: #181818;
+  color: #23272f;
+}
 }
 body.light-mode #themeToggleBtn {
-  background: #fff;
+  background: #f7fafc;
   color: #23272f;
-  box-shadow: 0 2px 12px #8883;
+  box-shadow: 0 2px 12px #c3cfe2;
+  border: 1px solid #e9ecef;
 }
 body.light-mode #themeToggleBtn:hover {
   background: #ffe066;
   color: #23272f;
+  border: 1px solid #ffe066;
 }
 body.light-mode .weather-card,
 body.light-mode .hourly-card {
-  background: #fff;
-  color: #181818;
-  border-color: #c3cfe2;
-  box-shadow: 0 6px 32px rgba(180,180,180,0.13);
+  background: #f7fafc;
+  color: #23272f;
+  border-color: #e9ecef;
+  box-shadow: 0 8px 32px rgba(180,180,180,0.10);
+}
 }
 body.light-mode .weather-card:hover {
   border-color: #ffe066;
+  box-shadow: 0 16px 40px rgba(255,224,102,0.12);
 }
 body.light-mode #historyList li {
-  background: #e9ecef;
+  background: #f7fafc;
   color: #23272f;
+  border: 1px solid #e9ecef;
 }
 body.light-mode #historyList li:hover {
   background: #ffe066;
   color: #23272f;
+  border: 1px solid #ffe066;
 }
 body.light-mode #searchBtn {
-  background: #ffe066;
+  background: linear-gradient(90deg, #ffe066 0%, #fffbe6 100%);
   color: #23272f;
+  border: 1px solid #ffe066;
+  box-shadow: 0 2px 8px #ffe06644;
 }
 body.light-mode #searchBtn:hover {
   background: #ffd700;
   color: #23272f;
+  border: 1px solid #ffd700;
 }
 body.light-mode #searchBtn:active {
-  box-shadow: 0 2px 8px #ffe066;
+  box-shadow: 0 2px 12px #ffd70099;
 }
 body.light-mode #cityInput {
-  background: #fff;
+  background: #f7fafc;
   color: #23272f;
+  border: 1px solid #e9ecef;
 }
 body.light-mode #cityInput:focus {
-  box-shadow: 0 0 8px #ffe066;
+  box-shadow: 0 0 12px #ffe06699;
+  border: 1px solid #ffe066;
 }
 body.light-mode #tempChart,
 body.light-mode .chartjs-render-monitor {
-  background: #fff !important;
+  background: #f7fafc !important;
   border-radius: 12px;
 }
 
