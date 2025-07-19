@@ -271,7 +271,7 @@ h1 {
     transition: box-shadow 0.2s;
 }
 
-/* Responsive design */
+/* Mobilbarát designe */
 @media (max-width: 600px) {
   main {
     max-width: 100%;
