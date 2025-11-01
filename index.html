@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FrissIdő</title>
+    <link rel="icon" type="image/x-icon" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-container">
+                    <img src="logo.png" alt="FrissIdő logó" class="app-logo">
+                    <h1 class="app-title">FrissIdő</h1>
+                </div>
+                <button id="themeToggle" class="theme-toggle" aria-label="Téma váltása">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <section class="search-section">
+                <div class="search-container">
+                    <div class="search-input-wrapper">
+                        <input type="text" id="cityInput" class="city-input" placeholder="Keresés város szerint..." autocomplete="off">
+                        <button id="searchBtn" class="search-button">Keresés</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="currentWeather" class="current-weather-section">
+                <div class="loading-container" id="loadingIndicator">
+                    <div class="loading-spinner"></div>
+                    <p id="loadingText">Helymeghatározás...</p>
+                </div>
+                <div class="current-weather-card" id="currentWeatherCard" style="display: none;">
+                    <div class="current-weather-header">
+                        <h2 id="currentCity" class="current-city">Betöltés...</h2>
+                        <p id="currentDate" class="current-date"></p>
+                    </div>
+                    <div class="current-weather-main">
+                        <div class="temperature-section">
+                            <div class="current-temp" id="currentTemp">--°C</div>
+                            <div class="weather-description" id="weatherDescription">--</div>
+                        </div>
+                        <div class="weather-icon">
+                            <div id="weatherIcon" class="weather-icon-svg"></div>
+                        </div>
+                    </div>
+                    <div class="weather-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Hőérzet</span>
+                            <span class="detail-value" id="feelsLike">--°C</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Páratartalom</span>
+                            <span class="detail-value" id="humidity">--%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Szél</span>
+                            <span class="detail-value" id="windSpeed">-- km/h</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Légnyomás</span>
+                            <span class="detail-value" id="pressure">-- hPa</span>
+                        </div>
+                    </div>
+                    <div class="location-info">
+                        <span id="locationMethod" class="location-method"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="forecastSection" class="forecast-section" style="display: none;">
+                <h2 class="section-title">5 napos előrejelzés</h2>
+                <div class="forecast-container" id="forecastContainer"></div>
+            </section>
+
+            <section id="hourlySection" class="hourly-section" style="display: none;">
+                <h2 class="section-title">Óránkénti előrejelzés</h2>
+                <div class="hourly-container" id="hourlyContainer"></div>
+                <div class="chart-container">
+                    <canvas id="weatherChart"></canvas>
+                </div>
+            </section>
+
+            <section id="historySection" class="history-section">
+                <h2 class="section-title">Korábbi keresések</h2>
+                <div class="history-container" id="historyContainer">
+                    <p class="empty-history">Még nincsenek korábbi keresések</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <p>FrissIdő Időjárás Alkalmazás &copy; 2025</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
