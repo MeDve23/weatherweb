@@ -2,17 +2,14 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <meta name="description" content="FrissIdő - Modern időjárás előrejelző alkalmazás">
     <meta name="theme-color" content="#0b162c">
-    
-    <!-- iOS támogatás -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FrissIdő">
     <link rel="apple-touch-icon" href="logo.png">
-    
-    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     
     <title>FrissIdő - WeatherWeb</title>
@@ -21,16 +18,25 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
+    <!-- Toast értesítés -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Pull to refresh indikátor -->
+    <div id="pullIndicator" class="pull-indicator">
+        <div class="pull-spinner"></div>
+    </div>
+
     <div class="app-container">
-        <header class="app-header">
+        <header class="app-header" id="appHeader">
             <div class="header-content">
                 <div class="logo-container">
-                    <img src="logo.png" alt="FrissIdő WeatherWeb" class="app-logo">
+                    <img src="logo.png" alt="FrissIdő" class="app-logo">
+                    <span class="app-name">FrissIdő</span>
                 </div>
             </div>
         </header>
@@ -43,56 +49,101 @@
                         <button id="geoBtn" class="geo-button" title="Helymeghatározás" aria-label="Helymeghatározás">
                             📍
                         </button>
-                        <button id="searchBtn" class="search-button">Keresés</button>
+                        <button id="searchBtn" class="search-button" aria-label="Keresés">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </section>
 
             <section id="currentWeather" class="current-weather-section">
-                <div class="loading-container" id="loadingIndicator">
-                    <div class="loading-spinner"></div>
-                    <p id="loadingText">Betöltés...</p>
-                </div>
-                
-                <div class="error-container" id="errorIndicator" style="display: none;">
-                    <p id="errorMessage" class="error-text"></p>
-                    <button id="retryButton" class="retry-button">Újrapróbálás</button>
+                <!-- Skeleton loading -->
+                <div class="skeleton-card" id="skeletonCard" style="display: none;">
+                    <div class="skeleton skeleton-line w-60"></div>
+                    <div class="skeleton skeleton-line w-40"></div>
+                    <div class="skeleton-row">
+                        <div class="skeleton skeleton-circle"></div>
+                        <div class="skeleton skeleton-rect"></div>
+                    </div>
+                    <div class="skeleton-grid">
+                        <div class="skeleton skeleton-box"></div>
+                        <div class="skeleton skeleton-box"></div>
+                        <div class="skeleton skeleton-box"></div>
+                        <div class="skeleton skeleton-box"></div>
+                    </div>
                 </div>
 
                 <div class="current-weather-card" id="currentWeatherCard" style="display: none;">
                     <div class="current-weather-header">
-                        <h2 id="currentCity" class="current-city">Betöltés...</h2>
-                        <p id="currentDate" class="current-date"></p>
+                        <div>
+                            <h2 id="currentCity" class="current-city">Betöltés...</h2>
+                            <p id="currentDate" class="current-date"></p>
+                        </div>
+                        <span id="locationMethod" class="location-badge"></span>
                     </div>
+                    
                     <div class="current-weather-main">
                         <div class="temperature-section">
-                            <div class="current-temp" id="currentTemp">--°C</div>
+                            <div class="current-temp" id="currentTemp">--°</div>
                             <div class="weather-description" id="weatherDescription">--</div>
+                            <div class="temp-range">
+                                <span id="tempMin">↓ --°</span>
+                                <span id="tempMax">↑ --°</span>
+                            </div>
                         </div>
                         <div class="weather-icon">
                             <div id="weatherIcon" class="weather-icon-container"></div>
                         </div>
                     </div>
+                    
+                    <!-- Napkelte/napnyugta + UV + levegő -->
+                    <div class="quick-info-row">
+                        <div class="quick-info">
+                            <span class="quick-info-icon">🌅</span>
+                            <span class="quick-info-label">Napkelte</span>
+                            <span class="quick-info-value" id="sunrise">--:--</span>
+                        </div>
+                        <div class="quick-info">
+                            <span class="quick-info-icon">🌇</span>
+                            <span class="quick-info-label">Napnyugta</span>
+                            <span class="quick-info-value" id="sunset">--:--</span>
+                        </div>
+                        <div class="quick-info">
+                            <span class="quick-info-icon">☀️</span>
+                            <span class="quick-info-label">UV index</span>
+                            <span class="quick-info-value" id="uvIndex">--</span>
+                        </div>
+                        <div class="quick-info">
+                            <span class="quick-info-icon">💨</span>
+                            <span class="quick-info-label">Levegő</span>
+                            <span class="quick-info-value" id="airQuality">--</span>
+                        </div>
+                    </div>
+
                     <div class="weather-details">
                         <div class="detail-item">
+                            <span class="detail-icon">🌡️</span>
                             <span class="detail-label">Hőérzet</span>
-                            <span class="detail-value" id="feelsLike">--°C</span>
+                            <span class="detail-value" id="feelsLike">--°</span>
                         </div>
                         <div class="detail-item">
+                            <span class="detail-icon">💧</span>
                             <span class="detail-label">Páratartalom</span>
                             <span class="detail-value" id="humidity">--%</span>
                         </div>
                         <div class="detail-item">
+                            <span class="detail-icon">💨</span>
                             <span class="detail-label">Szél</span>
                             <span class="detail-value" id="windSpeed">-- km/h</span>
                         </div>
                         <div class="detail-item">
+                            <span class="detail-icon">🌡️</span>
                             <span class="detail-label">Légnyomás</span>
                             <span class="detail-value" id="pressure">-- hPa</span>
                         </div>
-                    </div>
-                    <div class="location-info">
-                        <span id="locationMethod" class="location-method"></span>
                     </div>
                 </div>
             </section>
@@ -138,12 +189,11 @@
 
     <script src="app.js"></script>
     <script>
-        // Service Worker regisztráció (csak élesben, GitHub Pages-en)
         if ('serviceWorker' in navigator && location.protocol === 'https:') {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('service-worker.js')
-                    .then(reg => console.log('✅ Service Worker regisztrálva:', reg.scope))
-                    .catch(err => console.error('❌ Service Worker hiba:', err));
+                    .then(reg => console.log('✅ SW regisztrálva:', reg.scope))
+                    .catch(err => console.error('❌ SW hiba:', err));
             });
         }
     </script>

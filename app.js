@@ -6,11 +6,9 @@ const CARTO_API_KEY = 'cb1_3xlt_1_866e1ad8ced1178c18238cd8';
 const cityInput = document.getElementById('cityInput');
 const searchBtn = document.getElementById('searchBtn');
 const geoBtn = document.getElementById('geoBtn');
+const appHeader = document.getElementById('appHeader');
 const currentWeatherCard = document.getElementById('currentWeatherCard');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const loadingText = document.getElementById('loadingText');
-const errorIndicator = document.getElementById('errorIndicator');
-const errorMessage = document.getElementById('errorMessage');
+const skeletonCard = document.getElementById('skeletonCard');
 const forecastSection = document.getElementById('forecastSection');
 const hourlySection = document.getElementById('hourlySection');
 const radarSection = document.getElementById('radarSection');
@@ -24,9 +22,17 @@ const feelsLike = document.getElementById('feelsLike');
 const humidity = document.getElementById('humidity');
 const windSpeed = document.getElementById('windSpeed');
 const pressure = document.getElementById('pressure');
+const tempMin = document.getElementById('tempMin');
+const tempMax = document.getElementById('tempMax');
+const sunrise = document.getElementById('sunrise');
+const sunset = document.getElementById('sunset');
+const uvIndex = document.getElementById('uvIndex');
+const airQuality = document.getElementById('airQuality');
 const forecastContainer = document.getElementById('forecastContainer');
 const hourlyContainer = document.getElementById('hourlyContainer');
 const locationMethod = document.getElementById('locationMethod');
+const toast = document.getElementById('toast');
+const pullIndicator = document.getElementById('pullIndicator');
 
 let currentWeatherData = null;
 let weatherChart = null;
@@ -39,17 +45,34 @@ let mapMarker = null;
 let rainviewerHost = 'https://tilecache.rainviewer.com';
 let rainviewerPath = '';
 
-// --- Dátum és idő formázás ---
+// === TOAST ===
+function showToast(message, type = 'info', duration = 3000) {
+    toast.textContent = message;
+    toast.className = `toast ${type} show`;
+    
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+        toast.classList.remove('show');
+    }, duration);
+}
+
+// === REZGÉS ===
+function vibrate(pattern = 30) {
+    if ('vibrate' in navigator) {
+        try { navigator.vibrate(pattern); } catch(e) {}
+    }
+}
+
+// === DÁTUM ===
 function formatDate(timestamp, options = {}) {
     const date = new Date(timestamp * 1000);
-    const formatOptions = {
+    return date.toLocaleDateString('hu-HU', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         ...options
-    };
-    return date.toLocaleDateString('hu-HU', formatOptions);
+    });
 }
 
 function formatTime(timestamp) {
@@ -57,40 +80,63 @@ function formatTime(timestamp) {
     return date.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
 }
 
-// --- Animált Meteocons időjárás ikonok ---
+// === IKONOK ===
 function getWeatherIcon(iconCode) {
     const iconMap = {
-        '01d': 'clear-day',
-        '01n': 'clear-night',
-        '02d': 'partly-cloudy-day',
-        '02n': 'partly-cloudy-night',
-        '03d': 'cloudy',
-        '03n': 'cloudy',
-        '04d': 'overcast',
-        '04n': 'overcast',
-        '09d': 'rain',
-        '09n': 'rain',
-        '10d': 'rain',
-        '10n': 'rain',
-        '11d': 'thunderstorms',
-        '11n': 'thunderstorms',
-        '13d': 'snow',
-        '13n': 'snow',
-        '50d': 'fog',
-        '50n': 'fog'
+        '01d': 'clear-day', '01n': 'clear-night',
+        '02d': 'partly-cloudy-day', '02n': 'partly-cloudy-night',
+        '03d': 'cloudy', '03n': 'cloudy',
+        '04d': 'overcast', '04n': 'overcast',
+        '09d': 'rain', '09n': 'rain',
+        '10d': 'rain', '10n': 'rain',
+        '11d': 'thunderstorms', '11n': 'thunderstorms',
+        '13d': 'snow', '13n': 'snow',
+        '50d': 'fog', '50n': 'fog'
     };
     
     const iconName = iconMap[iconCode] || 'cloudy';
     const iconUrl = `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconName}.svg`;
     
-    return `<img src="${iconUrl}" 
-                alt="Időjárás ikon" 
-                class="weather-icon-img" 
-                loading="lazy"
+    return `<img src="${iconUrl}" alt="Időjárás ikon" class="weather-icon-img" loading="lazy"
                 onerror="this.onerror=null; this.src='https://openweathermap.org/img/wn/${iconCode}@4x.png';">`;
 }
 
-// --- RainViewer időbélyeg lekérése ---
+// === UV INDEX ÉS LEVEGŐMINŐSÉG ===
+function getUVDescription(uv) {
+    if (uv <= 2) return 'Alacsony';
+    if (uv <= 5) return 'Mérsékelt';
+    if (uv <= 7) return 'Magas';
+    if (uv <= 10) return 'Nagyon magas';
+    return 'Extrém';
+}
+
+function getAQIDescription(aqi) {
+    const map = { 1: 'Jó', 2: 'Elfogadható', 3: 'Mérsékelt', 4: 'Rossz', 5: 'Nagyon rossz' };
+    return map[aqi] || '--';
+}
+
+async function fetchAirQuality(lat, lon) {
+    try {
+        const response = await fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`);
+        if (!response.ok) throw new Error('AQI nem elérhető');
+        const data = await response.json();
+        return data.list[0].main.aqi;
+    } catch (e) {
+        console.warn('AQI hiba:', e);
+        return null;
+    }
+}
+
+async function fetchUVIndex(lat, lon) {
+    // Open-Meteo API - ingyenes UV index
+    try {
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=uv_index`);
+        const data = await response.json();
+        return data.current?.uv_index ?? null;
+    } catch { return null; }
+}
+
+// === RAINVIEWER ===
 async function fetchRainViewerTimestamp() {
     try {
         const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
@@ -99,17 +145,14 @@ async function fetchRainViewerTimestamp() {
             rainviewerHost = data.host || 'https://tilecache.rainviewer.com';
             if (data.radar.past && data.radar.past.length > 0) {
                 rainviewerPath = data.radar.past[data.radar.past.length - 1].path;
-            } else if (data.radar.nowcast && data.radar.nowcast.length > 0) {
-                rainviewerPath = data.radar.nowcast[0].path;
             }
-            console.log('✅ RainViewer timestamp betöltve:', rainviewerPath);
         }
     } catch (error) {
-        console.warn('⚠️ RainViewer timestamp nem elérhető:', error);
+        console.warn('RainViewer hiba:', error);
     }
 }
 
-// --- Térkép inicializálás ---
+// === TÉRKÉP ===
 async function initMap() {
     if (weatherMap) return;
     
@@ -119,7 +162,8 @@ async function initMap() {
         minZoom: 3,
         maxZoom: 18,
         zoomControl: true,
-        attributionControl: true
+        attributionControl: true,
+        tap: true
     });
 
     L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`, {
@@ -133,192 +177,139 @@ async function initMap() {
     setRadarLayer('precipitation');
 }
 
-// --- Radar rétegek ---
 function setRadarLayer(layerType) {
     if (!weatherMap) return;
-
-    if (currentLayer) {
-        weatherMap.removeLayer(currentLayer);
-    }
+    if (currentLayer) weatherMap.removeLayer(currentLayer);
 
     switch (layerType) {
         case 'precipitation': {
             const path = rainviewerPath || '/v2/radar/nowcast';
-            currentLayer = L.tileLayer(
-                `${rainviewerHost}${path}/256/{z}/{x}/{y}/2/1_1.png`,
-                {
-                    opacity: 0.7,
-                    attribution: '&copy; <a href="https://www.rainviewer.com/">RainViewer</a>',
-                    zIndex: 10,
-                    maxNativeZoom: 10,
-                    maxZoom: 18
-                }
-            );
+            currentLayer = L.tileLayer(`${rainviewerHost}${path}/256/{z}/{x}/{y}/2/1_1.png`, {
+                opacity: 0.7,
+                attribution: '&copy; <a href="https://www.rainviewer.com/">RainViewer</a>',
+                zIndex: 10, maxNativeZoom: 10, maxZoom: 18
+            });
             break;
         }
-
         case 'clouds':
-            currentLayer = L.tileLayer(
-                `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${API_KEY}`,
-                {
-                    opacity: 0.6,
-                    attribution: '&copy; OpenWeatherMap',
-                    zIndex: 10,
-                    maxNativeZoom: 18,
-                    maxZoom: 18
-                }
-            );
+            currentLayer = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${API_KEY}`, {
+                opacity: 0.6, zIndex: 10, maxNativeZoom: 18, maxZoom: 18
+            });
             break;
-
         case 'temp':
-            currentLayer = L.tileLayer(
-                `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${API_KEY}`,
-                {
-                    opacity: 0.6,
-                    attribution: '&copy; OpenWeatherMap',
-                    zIndex: 10,
-                    maxNativeZoom: 18,
-                    maxZoom: 18
-                }
-            );
+            currentLayer = L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${API_KEY}`, {
+                opacity: 0.6, zIndex: 10, maxNativeZoom: 18, maxZoom: 18
+            });
             break;
-
         case 'wind':
-            currentLayer = L.tileLayer(
-                `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${API_KEY}`,
-                {
-                    opacity: 0.6,
-                    attribution: '&copy; OpenWeatherMap',
-                    zIndex: 10,
-                    maxNativeZoom: 18,
-                    maxZoom: 18
-                }
-            );
+            currentLayer = L.tileLayer(`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${API_KEY}`, {
+                opacity: 0.6, zIndex: 10, maxNativeZoom: 18, maxZoom: 18
+            });
             break;
     }
-
-    if (currentLayer) {
-        currentLayer.addTo(weatherMap);
-    }
+    if (currentLayer) currentLayer.addTo(weatherMap);
 }
 
-// --- Térkép fókusz ---
 function focusMapOnCity(lat, lon, cityName, temp) {
     if (!weatherMap) return;
-
     weatherMap.setView([lat, lon], 9);
-
-    if (mapMarker) {
-        weatherMap.removeLayer(mapMarker);
-    }
+    if (mapMarker) weatherMap.removeLayer(mapMarker);
 
     const customIcon = L.divIcon({
         className: 'custom-marker',
-        html: `<div style="
-            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 3px solid #fff;
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.8), 0 0 40px rgba(56, 189, 248, 0.4);
-        "></div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        html: `<div style="background: linear-gradient(135deg, #38bdf8, #0ea5e9); width: 20px; height: 20px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px rgba(56, 189, 248, 0.8);"></div>`,
+        iconSize: [20, 20], iconAnchor: [10, 10]
     });
 
     mapMarker = L.marker([lat, lon], { icon: customIcon }).addTo(weatherMap);
-    mapMarker.bindPopup(`
-        <div style="text-align:center;padding:0.25rem;">
-            <strong style="font-size:1rem;">${cityName}</strong><br>
-            <span style="color:#38bdf8;font-weight:600;">${temp}°C</span>
-        </div>
-    `).openPopup();
+    mapMarker.bindPopup(`<div style="text-align:center;padding:0.25rem;"><strong>${cityName}</strong><br><span style="color:#38bdf8;font-weight:600;">${temp}°C</span></div>`).openPopup();
 }
 
-// --- API hívások ---
+// === API ===
 async function fetchWeatherData(city) {
-    const currentResponse = await fetch(`${BASE_URL}/weather?q=${city}&appid=${API_KEY}&units=metric&lang=hu`);
+    const [currentResponse, forecastResponse] = await Promise.all([
+        fetch(`${BASE_URL}/weather?q=${city}&appid=${API_KEY}&units=metric&lang=hu`),
+        fetch(`${BASE_URL}/forecast?q=${city}&appid=${API_KEY}&units=metric&lang=hu`)
+    ]);
     if (!currentResponse.ok) throw new Error('Város nem található');
-    const currentData = await currentResponse.json();
+    if (!forecastResponse.ok) throw new Error('Előrejelzés nem elérhető');
     
-    const forecastResponse = await fetch(`${BASE_URL}/forecast?q=${city}&appid=${API_KEY}&units=metric&lang=hu`);
-    if (!forecastResponse.ok) throw new Error('Előrejelzési adatok nem elérhetők');
-    const forecastData = await forecastResponse.json();
-    
-    return { current: currentData, forecast: forecastData };
+    const [current, forecast] = await Promise.all([currentResponse.json(), forecastResponse.json()]);
+    return { current, forecast };
 }
 
 async function fetchWeatherByCoords(lat, lon) {
-    const currentResponse = await fetch(`${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=hu`);
+    const [currentResponse, forecastResponse] = await Promise.all([
+        fetch(`${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=hu`),
+        fetch(`${BASE_URL}/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=hu`)
+    ]);
     if (!currentResponse.ok) throw new Error('Helyadatok nem elérhetők');
-    const currentData = await currentResponse.json();
+    if (!forecastResponse.ok) throw new Error('Előrejelzés nem elérhető');
     
-    const forecastResponse = await fetch(`${BASE_URL}/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=hu`);
-    if (!forecastResponse.ok) throw new Error('Előrejelzési adatok nem elérhetők');
-    const forecastData = await forecastResponse.json();
-    
-    return { current: currentData, forecast: forecastData };
+    const [current, forecast] = await Promise.all([currentResponse.json(), forecastResponse.json()]);
+    return { current, forecast };
 }
 
 function getCurrentLocation() {
     return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('A böngésző nem támogatja a helymeghatározást'));
-            return;
-        }
+        if (!navigator.geolocation) return reject(new Error('Nincs helymeghatározás'));
         
         navigator.geolocation.getCurrentPosition(
-            position => resolve({ 
-                lat: position.coords.latitude, 
-                lon: position.coords.longitude 
-            }),
+            position => resolve({ lat: position.coords.latitude, lon: position.coords.longitude }),
             error => {
-                let errorMessage;
+                let msg;
                 switch (error.code) {
-                    case error.PERMISSION_DENIED: 
-                        errorMessage = '❌ A helymeghatározást elutasítottad. Engedélyezd a böngésző beállításaiban!'; 
-                        break;
-                    case error.POSITION_UNAVAILABLE: 
-                        errorMessage = '❌ Helyinformáció nem elérhető.'; 
-                        break;
-                    case error.TIMEOUT: 
-                        errorMessage = '❌ A helymeghatározás túllépte az időkeretet.'; 
-                        break;
-                    default: 
-                        errorMessage = '❌ Ismeretlen hiba a helymeghatározás során.'; 
-                        break;
+                    case error.PERMISSION_DENIED: msg = '❌ Helymeghatározás elutasítva'; break;
+                    case error.POSITION_UNAVAILABLE: msg = '❌ Helyinformáció nem elérhető'; break;
+                    case error.TIMEOUT: msg = '❌ Időtúllépés'; break;
+                    default: msg = '❌ Ismeretlen hiba';
                 }
-                reject(new Error(errorMessage));
+                reject(new Error(msg));
             },
-            { 
-                enableHighAccuracy: false,
-                timeout: 8000,
-                maximumAge: 300000
-            }
+            { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
         );
     });
 }
 
-// --- Megjelenítés ---
-function displayCurrentWeather(data) {
+// === MEGJELENÍTÉS ===
+async function displayCurrentWeather(data) {
     const { current } = data;
+    
     currentCity.textContent = `${current.name}, ${current.sys.country}`;
     currentDate.textContent = formatDate(current.dt);
-    currentTemp.textContent = `${Math.round(current.main.temp)}°C`;
+    currentTemp.textContent = `${Math.round(current.main.temp)}°`;
     weatherDescription.textContent = current.weather[0].description;
     weatherIcon.innerHTML = getWeatherIcon(current.weather[0].icon);
     
-    feelsLike.textContent = `${Math.round(current.main.feels_like)}°C`;
+    feelsLike.textContent = `${Math.round(current.main.feels_like)}°`;
     humidity.textContent = `${current.main.humidity}%`;
     windSpeed.textContent = `${Math.round(current.wind.speed * 3.6)} km/h`;
     pressure.textContent = `${current.main.pressure} hPa`;
     
-    locationMethod.textContent = currentLocationMethod === 'geolocation' 
-        ? '📍 Automatikus helymeghatározás' 
-        : '🔍 Keresés alapján';
+    tempMin.textContent = `↓ ${Math.round(current.main.temp_min)}°`;
+    tempMax.textContent = `↑ ${Math.round(current.main.temp_max)}°`;
     
+    sunrise.textContent = formatTime(current.sys.sunrise);
+    sunset.textContent = formatTime(current.sys.sunset);
+    
+    locationMethod.textContent = currentLocationMethod === 'geolocation' 
+        ? '📍 GPS' 
+        : '🔍 Keresés';
+    
+    // UV index
+    try {
+        const uvValue = await fetchUVIndex(current.coord.lat, current.coord.lon);
+        uvIndex.textContent = uvValue !== null ? `${uvValue.toFixed(1)} · ${getUVDescription(uvValue)}` : '--';
+    } catch { uvIndex.textContent = '--'; }
+    
+    // Levegőminőség
+    try {
+        const aqi = await fetchAirQuality(current.coord.lat, current.coord.lon);
+        airQuality.textContent = aqi !== null ? getAQIDescription(aqi) : '--';
+    } catch { airQuality.textContent = '--'; }
+    
+    skeletonCard.style.display = 'none';
     currentWeatherCard.style.display = 'block';
-    hideLoading();
 }
 
 function displayForecast(data) {
@@ -326,34 +317,35 @@ function displayForecast(data) {
     const dailyForecasts = forecast.list.filter(item => item.dt_txt.includes('12:00:00')).slice(0, 5);
     forecastContainer.innerHTML = '';
     
-    dailyForecasts.forEach(day => {
-        const forecastCard = document.createElement('div');
-        forecastCard.className = 'forecast-card';
-        forecastCard.innerHTML = `
+    dailyForecasts.forEach((day, index) => {
+        const card = document.createElement('div');
+        card.className = 'forecast-card';
+        card.style.animationDelay = `${index * 0.05}s`;
+        card.innerHTML = `
             <div class="forecast-date">${formatDate(day.dt, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
             <div class="forecast-icon">${getWeatherIcon(day.weather[0].icon)}</div>
-            <div class="forecast-temp">${Math.round(day.main.temp)}°C</div>
+            <div class="forecast-temp">${Math.round(day.main.temp)}°</div>
             <div class="forecast-description">${day.weather[0].description}</div>
         `;
-        forecastContainer.appendChild(forecastCard);
+        forecastContainer.appendChild(card);
     });
     forecastSection.style.display = 'block';
 }
 
 function displayHourlyForecast(data) {
     const { forecast } = data;
-    const hourlyForecasts = forecast.list.slice(0, 8);
+    const hourlyForecasts = forecast.list.slice(0, 12);
     hourlyContainer.innerHTML = '';
     
     hourlyForecasts.forEach(hour => {
-        const hourlyCard = document.createElement('div');
-        hourlyCard.className = 'hourly-card';
-        hourlyCard.innerHTML = `
+        const card = document.createElement('div');
+        card.className = 'hourly-card';
+        card.innerHTML = `
             <div class="hourly-time">${formatTime(hour.dt)}</div>
             <div class="hourly-icon">${getWeatherIcon(hour.weather[0].icon)}</div>
-            <div class="hourly-temp">${Math.round(hour.main.temp)}°C</div>
+            <div class="hourly-temp">${Math.round(hour.main.temp)}°</div>
         `;
-        hourlyContainer.appendChild(hourlyCard);
+        hourlyContainer.appendChild(card);
     });
     
     createTemperatureChart(hourlyForecasts);
@@ -370,14 +362,13 @@ function createTemperatureChart(hourlyData) {
     weatherChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labels,
+            labels,
             datasets: [{
-                label: 'Hőmérséklet (°C)',
+                label: 'Hőmérséklet',
                 data: temperatures,
                 borderColor: '#38bdf8',
                 backgroundColor: (context) => {
-                    const chart = context.chart;
-                    const { ctx, chartArea } = chart;
+                    const { ctx, chartArea } = context.chart;
                     if (!chartArea) return 'rgba(56, 189, 248, 0.1)';
                     const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
                     gradient.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
@@ -388,8 +379,8 @@ function createTemperatureChart(hourlyData) {
                 pointBackgroundColor: '#38bdf8',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 7,
+                pointRadius: 4,
+                pointHoverRadius: 6,
                 fill: true,
                 tension: 0.4
             }]
@@ -405,35 +396,33 @@ function createTemperatureChart(hourlyData) {
                     bodyColor: '#38bdf8',
                     borderColor: '#38bdf8',
                     borderWidth: 1,
-                    padding: 12,
+                    padding: 10,
                     cornerRadius: 8,
-                    displayColors: false
+                    displayColors: false,
+                    titleFont: { size: 12 },
+                    bodyFont: { size: 14, weight: 'bold' }
                 }
             },
             scales: {
                 y: {
                     beginAtZero: false,
                     grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
+                    ticks: { color: '#94a3b8', font: { size: 10 } }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { color: '#94a3b8' }
+                    ticks: { color: '#94a3b8', font: { size: 10 } }
                 }
             }
         }
     });
 }
 
-// --- Radar megjelenítés ---
 async function displayRadar(data) {
     const { current } = data;
-    
     radarSection.style.display = 'block';
     
-    if (!weatherMap) {
-        await initMap();
-    }
+    if (!weatherMap) await initMap();
     
     setTimeout(() => {
         focusMapOnCity(current.coord.lat, current.coord.lon, current.name, Math.round(current.main.temp));
@@ -441,12 +430,12 @@ async function displayRadar(data) {
     }, 200);
 }
 
-// --- Előzmények ---
+// === ELŐZMÉNYEK ===
 function saveToHistory(city) {
     let history = JSON.parse(localStorage.getItem('weatherHistory')) || [];
     history = history.filter(item => item.toLowerCase() !== city.toLowerCase());
     history.unshift(city);
-    if (history.length > 5) history.pop();
+    if (history.length > 6) history.pop();
     localStorage.setItem('weatherHistory', JSON.stringify(history));
     displayHistory();
 }
@@ -459,21 +448,21 @@ function displayHistory() {
     }
     historyContainer.innerHTML = '';
     history.forEach(city => {
-        const historyItem = document.createElement('div');
-        historyItem.className = 'history-item';
-        historyItem.textContent = city;
-        historyItem.addEventListener('click', () => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.textContent = city;
+        item.addEventListener('click', () => {
+            vibrate(20);
             cityInput.value = city;
             getWeatherData(city);
         });
-        historyContainer.appendChild(historyItem);
+        historyContainer.appendChild(item);
     });
 }
 
-// --- UI állapotok ---
+// === UI ===
 function showLoading() {
-    loadingIndicator.style.display = 'flex';
-    errorIndicator.style.display = 'none';
+    skeletonCard.style.display = 'block';
     currentWeatherCard.style.display = 'none';
     forecastSection.style.display = 'none';
     hourlySection.style.display = 'none';
@@ -481,105 +470,162 @@ function showLoading() {
 }
 
 function hideLoading() {
-    loadingIndicator.style.display = 'none';
+    skeletonCard.style.display = 'none';
 }
 
-function showError(message) {
-    loadingIndicator.style.display = 'none';
-    errorIndicator.style.display = 'flex';
-    errorMessage.textContent = message;
-    
-    document.getElementById('retryButton').onclick = () => {
-        errorIndicator.style.display = 'none';
-        getWeatherData('Budapest');
-    };
-}
-
-// --- Fő vezérlés ---
+// === FŐ VEZÉRLÉS ===
 async function getWeatherData(city) {
     try {
         showLoading();
         currentLocationMethod = 'manual';
         const data = await fetchWeatherData(city);
         currentWeatherData = data;
-        displayCurrentWeather(data);
+        
+        await displayCurrentWeather(data);
         displayForecast(data);
         displayHourlyForecast(data);
         await displayRadar(data);
         saveToHistory(city);
+        hideLoading();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-        console.error('Hiba:', error);
-        showError(error.message);
+        hideLoading();
+        showToast(error.message, 'error');
     }
 }
 
 async function getWeatherByLocation() {
     try {
-        // Gomb loading állapot
         geoBtn.classList.add('loading');
         geoBtn.disabled = true;
-        
-        currentLocationMethod = 'geolocation';
         showLoading();
-        loadingText.textContent = 'Helymeghatározás...';
+        currentLocationMethod = 'geolocation';
         
         const coords = await getCurrentLocation();
-        loadingText.textContent = 'Időjárási adatok betöltése...';
-        
         const data = await fetchWeatherByCoords(coords.lat, coords.lon);
         currentWeatherData = data;
-        displayCurrentWeather(data);
+        
+        await displayCurrentWeather(data);
         displayForecast(data);
         displayHourlyForecast(data);
         await displayRadar(data);
-        // Geolokációnál NEM mentjük az előzményekbe (mert nincs városnév, csak koordináta)
+        hideLoading();
+        showToast('📍 Helymeghatározás sikeres', 'success');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-        console.error('Hiba a helymeghatározás során:', error);
-        showError(error.message);
+        hideLoading();
+        showToast(error.message, 'error', 4000);
     } finally {
         geoBtn.classList.remove('loading');
         geoBtn.disabled = false;
     }
 }
 
-// --- Eseménykezelők ---
+// === HEADER ELREJTÉS GÖRGETÉSKOR ===
+let lastScrollY = window.scrollY;
+let ticking = false;
+
+window.addEventListener('scroll', () => {
+    if (!ticking) {
+        window.requestAnimationFrame(() => {
+            const currentScrollY = window.scrollY;
+            if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                appHeader.classList.add('hidden');
+            } else {
+                appHeader.classList.remove('hidden');
+            }
+            lastScrollY = currentScrollY;
+            ticking = false;
+        });
+        ticking = true;
+    }
+}, { passive: true });
+
+// === PULL TO REFRESH ===
+let touchStartY = 0;
+let pullDistance = 0;
+const PULL_THRESHOLD = 80;
+
+document.addEventListener('touchstart', (e) => {
+    if (window.scrollY === 0) {
+        touchStartY = e.touches[0].clientY;
+    }
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+    if (window.scrollY > 0 || touchStartY === 0) return;
+    
+    pullDistance = e.touches[0].clientY - touchStartY;
+    
+    if (pullDistance > 0 && pullDistance < 150) {
+        pullIndicator.classList.add('active');
+        pullIndicator.style.transform = `translateX(-50%) translateY(${Math.min(pullDistance - 50, 20)}px)`;
+    }
+}, { passive: true });
+
+document.addEventListener('touchend', async () => {
+    if (pullDistance > PULL_THRESHOLD) {
+        pullIndicator.style.transform = 'translateX(-50%) translateY(0)';
+        vibrate(30);
+        
+        if (currentWeatherData && currentWeatherData.current) {
+            const city = currentWeatherData.current.name;
+            await getWeatherData(city);
+            showToast('🔄 Frissítve!', 'success', 1500);
+        }
+    }
+    
+    pullIndicator.classList.remove('active');
+    pullIndicator.style.transform = '';
+    touchStartY = 0;
+    pullDistance = 0;
+}, { passive: true });
+
+// === ESEMÉNYKEZELŐK ===
 searchBtn.addEventListener('click', () => {
+    vibrate(20);
     const city = cityInput.value.trim();
     if (city) getWeatherData(city);
 });
 
 cityInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
+        e.preventDefault();
+        cityInput.blur();
         const city = cityInput.value.trim();
         if (city) getWeatherData(city);
     }
 });
 
 geoBtn.addEventListener('click', () => {
+    vibrate(20);
     getWeatherByLocation();
 });
 
 // Radar gombok
 document.querySelectorAll('.radar-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+        vibrate(15);
         document.querySelectorAll('.radar-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         setRadarLayer(btn.dataset.layer);
     });
 });
 
-// --- Indítás ---
+// === INDÍTÁS ===
 function initApp() {
     displayHistory();
     
-    // NEM hívjuk automatikusan a geolokációt! (böngésző blokkolja)
-    // Helyette az utolsó keresett várost, vagy Budapestet töltjük be
     const history = JSON.parse(localStorage.getItem('weatherHistory')) || [];
     if (history.length > 0) {
         getWeatherData(history[0]);
     } else {
         getWeatherData('Budapest');
     }
+    
+    // Online/offline állapot
+    window.addEventListener('online', () => showToast('🌐 Újra online', 'success', 2000));
+    window.addEventListener('offline', () => showToast('📵 Offline mód', 'info', 2000));
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
