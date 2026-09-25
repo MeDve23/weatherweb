@@ -3,25 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FrissIdő</title>
-    <link rel="icon" type="image/x-icon" href="logo.png">
+    <meta name="description" content="FrissIdő - Modern időjárás előrejelző alkalmazás">
+    <title>FrissIdő - WeatherWeb</title>
+    <link rel="icon" type="image/png" href="logo.png">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div class="app-container">
         <header class="app-header">
             <div class="header-content">
                 <div class="logo-container">
-                    <img src="logo.png" alt="FrissIdő logó" class="app-logo">
-                    <h1 class="app-title">FrissIdő</h1>
+                    <img src="logo.png" alt="FrissIdő WeatherWeb" class="app-logo">
                 </div>
-                <button id="themeToggle" class="theme-toggle" aria-label="Téma váltása">
-                    <span class="theme-icon">🌙</span>
-                </button>
             </div>
         </header>
 
@@ -29,7 +28,7 @@
             <section class="search-section">
                 <div class="search-container">
                     <div class="search-input-wrapper">
-                        <input type="text" id="cityInput" class="city-input" placeholder="Keresés város szerint..." autocomplete="off">
+                        <input type="text" id="cityInput" class="city-input" placeholder="Keress egy várost..." autocomplete="off">
                         <button id="searchBtn" class="search-button">Keresés</button>
                     </div>
                 </div>
@@ -40,6 +39,12 @@
                     <div class="loading-spinner"></div>
                     <p id="loadingText">Helymeghatározás...</p>
                 </div>
+                
+                <div class="error-container" id="errorIndicator" style="display: none;">
+                    <p id="errorMessage" class="error-text"></p>
+                    <button id="retryButton" class="retry-button">Újrapróbálás</button>
+                </div>
+
                 <div class="current-weather-card" id="currentWeatherCard" style="display: none;">
                     <div class="current-weather-header">
                         <h2 id="currentCity" class="current-city">Betöltés...</h2>
@@ -78,6 +83,19 @@
                 </div>
             </section>
 
+            <section id="radarSection" class="radar-section" style="display: none;">
+                <h2 class="section-title">Csapadékradar</h2>
+                <div class="radar-controls">
+                    <button class="radar-btn active" data-layer="precipitation">🌧️ Csapadék</button>
+                    <button class="radar-btn" data-layer="clouds">☁️ Felhők</button>
+                    <button class="radar-btn" data-layer="temp">🌡️ Hőmérséklet</button>
+                    <button class="radar-btn" data-layer="wind">💨 Szél</button>
+                </div>
+                <div class="radar-container">
+                    <div id="weatherMap"></div>
+                </div>
+            </section>
+
             <section id="forecastSection" class="forecast-section" style="display: none;">
                 <h2 class="section-title">5 napos előrejelzés</h2>
                 <div class="forecast-container" id="forecastContainer"></div>
@@ -100,7 +118,7 @@
         </main>
 
         <footer class="app-footer">
-            <p>FrissIdő Időjárás Alkalmazás &copy; 2025</p>
+            <p>FrissIdő WeatherWeb &copy; 2025</p>
         </footer>
     </div>
 
