@@ -1,7 +1,6 @@
 const API_KEY = 'b0a8907870c84d43cd9995146a01778e';
-const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 const CARTO_API_KEY = 'cb1_3xlt_1_866e1ad8ced1178c18238cd8';
-
+const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
 const cityInput = document.getElementById('cityInput');
 const searchBtn = document.getElementById('searchBtn');
@@ -47,6 +46,7 @@ let rainviewerPath = '';
 
 // === TOAST ===
 function showToast(message, type = 'info', duration = 3000) {
+    if (!toast) return;
     toast.textContent = message;
     toast.className = `toast ${type} show`;
     
@@ -128,7 +128,6 @@ async function fetchAirQuality(lat, lon) {
 }
 
 async function fetchUVIndex(lat, lon) {
-    // Open-Meteo API - ingyenes UV index
     try {
         const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=uv_index`);
         const data = await response.json();
@@ -152,29 +151,55 @@ async function fetchRainViewerTimestamp() {
     }
 }
 
-// === TÉRKÉP ===
+// === TÉRKÉP INICIALIZÁLÁS (MOBIL-JAVÍTOTT) ===
 async function initMap() {
     if (weatherMap) return;
     
-    weatherMap = L.map('weatherMap', {
-        center: [47.1625, 19.5033],
-        zoom: 6,
-        minZoom: 3,
-        maxZoom: 18,
-        zoomControl: true,
-        attributionControl: true,
-        tap: true
-    });
+    const mapContainer = document.getElementById('weatherMap');
+    if (!mapContainer) {
+        console.warn('Nincs weatherMap konténer');
+        return;
+    }
+    
+    // Megvárjuk, hogy a konténer látható legyen és legyen magassága
+    let attempts = 0;
+    while ((mapContainer.offsetHeight === 0 || mapContainer.offsetWidth === 0) && attempts < 20) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+    }
+    
+    if (mapContainer.offsetHeight === 0) {
+        console.warn('A térkép konténer még mindig 0 magas');
+        return;
+    }
+    
+    try {
+        weatherMap = L.map('weatherMap', {
+            center: [47.1625, 19.5033],
+            zoom: 6,
+            minZoom: 3,
+            maxZoom: 18,
+            zoomControl: true,
+            attributionControl: true
+        });
 
-    L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`, {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 18,
-        maxNativeZoom: 18
-    }).addTo(weatherMap);
+        L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`, {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 18,
+            maxNativeZoom: 18
+        }).addTo(weatherMap);
 
-    await fetchRainViewerTimestamp();
-    setRadarLayer('precipitation');
+        await fetchRainViewerTimestamp();
+        setRadarLayer('precipitation');
+        
+        // Több invalidateSize hívás mobilon (a címsáv eltűnése/feltűnése miatt)
+        setTimeout(() => weatherMap && weatherMap.invalidateSize(), 100);
+        setTimeout(() => weatherMap && weatherMap.invalidateSize(), 500);
+        setTimeout(() => weatherMap && weatherMap.invalidateSize(), 1000);
+    } catch (err) {
+        console.error('Térkép inicializálási hiba:', err);
+    }
 }
 
 function setRadarLayer(layerType) {
@@ -228,8 +253,8 @@ function focusMapOnCity(lat, lon, cityName, temp) {
 // === API ===
 async function fetchWeatherData(city) {
     const [currentResponse, forecastResponse] = await Promise.all([
-        fetch(`${BASE_URL}/weather?q=${city}&appid=${API_KEY}&units=metric&lang=hu`),
-        fetch(`${BASE_URL}/forecast?q=${city}&appid=${API_KEY}&units=metric&lang=hu`)
+        fetch(`${BASE_URL}/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric&lang=hu`),
+        fetch(`${BASE_URL}/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric&lang=hu`)
     ]);
     if (!currentResponse.ok) throw new Error('Város nem található');
     if (!forecastResponse.ok) throw new Error('Előrejelzés nem elérhető');
@@ -418,16 +443,27 @@ function createTemperatureChart(hourlyData) {
     });
 }
 
+// === RADAR MEGJELENÍTÉS (MOBIL-JAVÍTOTT) ===
 async function displayRadar(data) {
     const { current } = data;
+    
+    // Először láthatóvá tesszük a szekciót
     radarSection.style.display = 'block';
     
-    if (!weatherMap) await initMap();
+    // Várunk, hogy a DOM kirajzolódjon, mielőtt a térképet inicializáljuk
+    await new Promise(resolve => setTimeout(resolve, 200));
     
+    if (!weatherMap) {
+        await initMap();
+    }
+    
+    // Térkép középre állítása
     setTimeout(() => {
-        focusMapOnCity(current.coord.lat, current.coord.lon, current.name, Math.round(current.main.temp));
-        weatherMap.invalidateSize();
-    }, 200);
+        if (weatherMap) {
+            weatherMap.invalidateSize();
+            focusMapOnCity(current.coord.lat, current.coord.lon, current.name, Math.round(current.main.temp));
+        }
+    }, 300);
 }
 
 // === ELŐZMÉNYEK ===
@@ -491,6 +527,7 @@ async function getWeatherData(city) {
     } catch (error) {
         hideLoading();
         showToast(error.message, 'error');
+        console.error('Hiba:', error);
     }
 }
 
@@ -515,6 +552,7 @@ async function getWeatherByLocation() {
     } catch (error) {
         hideLoading();
         showToast(error.message, 'error', 4000);
+        console.error('Geolokáció hiba:', error);
     } finally {
         geoBtn.classList.remove('loading');
         geoBtn.disabled = false;
@@ -610,6 +648,13 @@ document.querySelectorAll('.radar-btn').forEach(btn => {
         btn.classList.add('active');
         setRadarLayer(btn.dataset.layer);
     });
+});
+
+// Ablak átméretezés (mobil címsáv változás)
+window.addEventListener('resize', () => {
+    if (weatherMap) {
+        setTimeout(() => weatherMap.invalidateSize(), 200);
+    }
 });
 
 // === INDÍTÁS ===
