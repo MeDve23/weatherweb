@@ -5,13 +5,13 @@ const ASSETS_TO_CACHE = [
     './style.css',
     './app.js',
     './logo.png',
+    './manifest.json',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
     'https://cdn.jsdelivr.net/npm/chart.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
 ];
 
-// Telepítés: fájlok cache-elése
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
@@ -24,7 +24,6 @@ self.addEventListener('install', event => {
     self.skipWaiting();
 });
 
-// Aktiválás: régi cache törlése
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
@@ -40,9 +39,8 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// Fetch: cache-ből vagy hálózatról
 self.addEventListener('fetch', event => {
-    // API hívásokat ne cache-eljük
+    // API és csempe hívásokat ne cache-eljük
     if (event.request.url.includes('api.openweathermap.org') ||
         event.request.url.includes('api.rainviewer.com') ||
         event.request.url.includes('tile.openweathermap.org') ||

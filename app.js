@@ -55,11 +55,37 @@ function formatTime(timestamp) {
     return date.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
 }
 
-// --- Időjárás ikonok (OpenWeatherMap) ---
+// --- Animált Meteocons időjárás ikonok ---
 function getWeatherIcon(iconCode) {
-    return `<img src="https://openweathermap.org/img/wn/${iconCode}@4x.png" 
+    const iconMap = {
+        '01d': 'clear-day',
+        '01n': 'clear-night',
+        '02d': 'partly-cloudy-day',
+        '02n': 'partly-cloudy-night',
+        '03d': 'cloudy',
+        '03n': 'cloudy',
+        '04d': 'overcast',
+        '04n': 'overcast',
+        '09d': 'rain',
+        '09n': 'rain',
+        '10d': 'rain',
+        '10n': 'rain',
+        '11d': 'thunderstorms',
+        '11n': 'thunderstorms',
+        '13d': 'snow',
+        '13n': 'snow',
+        '50d': 'fog',
+        '50n': 'fog'
+    };
+    
+    const iconName = iconMap[iconCode] || 'cloudy';
+    const iconUrl = `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconName}.svg`;
+    
+    return `<img src="${iconUrl}" 
                 alt="Időjárás ikon" 
-                style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));">`;
+                class="weather-icon-img" 
+                loading="lazy"
+                onerror="this.onerror=null; this.src='https://openweathermap.org/img/wn/${iconCode}@4x.png';">`;
 }
 
 // --- RainViewer időbélyeg lekérése ---
@@ -69,16 +95,15 @@ async function fetchRainViewerTimestamp() {
         const data = await response.json();
         if (data && data.radar) {
             rainviewerHost = data.host || 'https://tilecache.rainviewer.com';
-            // A legfrissebb elérhető radar frame (past)
             if (data.radar.past && data.radar.past.length > 0) {
                 rainviewerPath = data.radar.past[data.radar.past.length - 1].path;
             } else if (data.radar.nowcast && data.radar.nowcast.length > 0) {
                 rainviewerPath = data.radar.nowcast[0].path;
             }
-            console.log('RainViewer timestamp betöltve:', rainviewerPath);
+            console.log('✅ RainViewer timestamp betöltve:', rainviewerPath);
         }
     } catch (error) {
-        console.warn('RainViewer timestamp nem elérhető:', error);
+        console.warn('⚠️ RainViewer timestamp nem elérhető:', error);
     }
 }
 
@@ -95,7 +120,7 @@ async function initMap() {
         attributionControl: true
     });
 
-    // Carto sötét térkép a saját API kulcsoddal
+    // Carto sötét térkép a saját API kulccsal
     L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
@@ -103,10 +128,7 @@ async function initMap() {
         maxNativeZoom: 18
     }).addTo(weatherMap);
 
-    // RainViewer időbélyeg lekérése
     await fetchRainViewerTimestamp();
-
-    // Alapértelmezett réteg
     setRadarLayer('precipitation');
 }
 
@@ -119,8 +141,7 @@ function setRadarLayer(layerType) {
     }
 
     switch (layerType) {
-        case 'precipitation':
-            // Ha nincs timestamp, használjunk egy fallback URL-t
+        case 'precipitation': {
             const path = rainviewerPath || '/v2/radar/nowcast';
             currentLayer = L.tileLayer(
                 `${rainviewerHost}${path}/256/{z}/{x}/{y}/2/1_1.png`,
@@ -133,6 +154,7 @@ function setRadarLayer(layerType) {
                 }
             );
             break;
+        }
 
         case 'clouds':
             currentLayer = L.tileLayer(
