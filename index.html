@@ -134,15 +134,42 @@
     </div>
 
     <!-- Service Worker regisztráció -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(reg => console.log('✅ Service Worker regisztrálva, scope:', reg.scope))
-                    .catch(err => console.error('❌ Service Worker hiba:', err));
+   <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => {
+                    console.log('✅ Service Worker regisztrálva:', reg.scope);
+                    
+                    // Figyeld az új verziókat
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        console.log('🔄 Új verzió letöltése...');
+                        
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('✨ Új verzió elérhető!');
+                                
+                                // Automatikus frissítés felajánlása
+                                if (confirm('Új verzió érhető el! Frissítsük most?')) {
+                                    newWorker.postMessage({ action: 'skipWaiting' });
+                                }
+                            }
+                        });
+                    });
+                })
+                .catch(err => console.error('❌ Service Worker hiba:', err));
+            
+            // Amikor az új Service Worker aktiválódik, töltsük újra az oldalt
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    refreshing = true;
+                    window.location.reload();
+                }
             });
-        }
-    </script>
-    <script src="app.js"></script>
+        });
+    }
+</script>
 </body>
 </html>
