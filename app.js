@@ -579,29 +579,45 @@ window.addEventListener('scroll', () => {
     }
 }, { passive: true });
 
-// === PULL TO REFRESH ===
+// === PULL TO REFRESH (biztonságos) ===
 let touchStartY = 0;
 let pullDistance = 0;
-const PULL_THRESHOLD = 80;
+let isPulling = false;
+const PULL_THRESHOLD = 100;
 
 document.addEventListener('touchstart', (e) => {
-    if (window.scrollY === 0) {
+    // Csak akkor, ha a lap tetején vagyunk
+    if (window.scrollY <= 0 && window.pageYOffset <= 0) {
         touchStartY = e.touches[0].clientY;
+        isPulling = true;
     }
 }, { passive: true });
 
 document.addEventListener('touchmove', (e) => {
-    if (window.scrollY > 0 || touchStartY === 0) return;
+    if (!isPulling) return;
+    if (window.scrollY > 0) {
+        isPulling = false;
+        pullIndicator.classList.remove('active');
+        return;
+    }
     
     pullDistance = e.touches[0].clientY - touchStartY;
     
-    if (pullDistance > 0 && pullDistance < 150) {
+    // Csak lefelé húzásnál
+    if (pullDistance > 0 && pullDistance < 200) {
         pullIndicator.classList.add('active');
-        pullIndicator.style.transform = `translateX(-50%) translateY(${Math.min(pullDistance - 50, 20)}px)`;
+        const offset = Math.min(pullDistance - 50, 20);
+        pullIndicator.style.transform = `translateX(-50%) translateY(${offset}px)`;
     }
 }, { passive: true });
 
 document.addEventListener('touchend', async () => {
+    if (!isPulling) {
+        touchStartY = 0;
+        pullDistance = 0;
+        return;
+    }
+    
     if (pullDistance > PULL_THRESHOLD) {
         pullIndicator.style.transform = 'translateX(-50%) translateY(0)';
         vibrate(30);
@@ -617,6 +633,7 @@ document.addEventListener('touchend', async () => {
     pullIndicator.style.transform = '';
     touchStartY = 0;
     pullDistance = 0;
+    isPulling = false;
 }, { passive: true });
 
 // === ESEMÉNYKEZELŐK ===

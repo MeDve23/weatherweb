@@ -14,7 +14,6 @@
     
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     
-    /* Safe area (iPhone notch) */
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -26,9 +25,25 @@
     -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
+html {
+    width: 100%;
     overflow-x: hidden;
-    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    background-image: 
+        radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 90% 80%, rgba(251, 191, 36, 0.05) 0%, transparent 50%);
+    background-attachment: scroll;
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 body {
