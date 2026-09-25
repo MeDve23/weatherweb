@@ -1,8 +1,7 @@
 // ⚠️ FONTOS: Minden feltöltés előtt növeld a verziószámot! (v1 → v2 → v3...)
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `frissido-${CACHE_VERSION}`;
 
-// Ezek a fájlok cache-elődnek (offline működéshez)
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -26,7 +25,6 @@ self.addEventListener('install', event => {
             });
         })
     );
-    // Azonnal aktiválódjon, ne várjon az összes tab bezárására
     self.skipWaiting();
 });
 
@@ -63,12 +61,10 @@ self.addEventListener('fetch', event => {
     }
 
     // Saját fájlok (HTML, CSS, JS) → NETWORK-FIRST
-    // Mindig a szerverről tölti le, cache csak offline fallback
     if (url.includes(self.location.origin)) {
         event.respondWith(
             fetch(event.request)
                 .then(response => {
-                    // Friss verzió letöltve → cache frissítése
                     if (response && response.status === 200 && event.request.method === 'GET') {
                         const responseClone = response.clone();
                         caches.open(CACHE_NAME).then(cache => {
@@ -78,7 +74,6 @@ self.addEventListener('fetch', event => {
                     return response;
                 })
                 .catch(() => {
-                    // Offline → cache-ből
                     return caches.match(event.request).then(cached => {
                         if (cached) return cached;
                         if (event.request.mode === 'navigate') {
@@ -90,7 +85,7 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Külső erőforrások (Chart.js, Leaflet, font) → CACHE-FIRST
+    // Külső erőforrások → CACHE-FIRST
     event.respondWith(
         caches.match(event.request).then(response => {
             return response || fetch(event.request).then(fetchResponse => {
@@ -104,11 +99,4 @@ self.addEventListener('fetch', event => {
             });
         })
     );
-});
-
-// Üzenetkezelés - manuális frissítés kérése
-self.addEventListener('message', event => {
-    if (event.data && event.data.action === 'skipWaiting') {
-        self.skipWaiting();
-    }
 });

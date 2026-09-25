@@ -40,6 +40,9 @@
                 <div class="search-container">
                     <div class="search-input-wrapper">
                         <input type="text" id="cityInput" class="city-input" placeholder="Keress egy várost..." autocomplete="off">
+                        <button id="geoBtn" class="geo-button" title="Helymeghatározás" aria-label="Helymeghatározás">
+                            📍
+                        </button>
                         <button id="searchBtn" class="search-button">Keresés</button>
                     </div>
                 </div>
@@ -48,7 +51,7 @@
             <section id="currentWeather" class="current-weather-section">
                 <div class="loading-container" id="loadingIndicator">
                     <div class="loading-spinner"></div>
-                    <p id="loadingText">Helymeghatározás...</p>
+                    <p id="loadingText">Betöltés...</p>
                 </div>
                 
                 <div class="error-container" id="errorIndicator" style="display: none;">
@@ -133,43 +136,16 @@
         </footer>
     </div>
 
-    <!-- Service Worker regisztráció -->
-   <script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('service-worker.js')
-                .then(reg => {
-                    console.log('✅ Service Worker regisztrálva:', reg.scope);
-                    
-                    // Figyeld az új verziókat
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        console.log('🔄 Új verzió letöltése...');
-                        
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                console.log('✨ Új verzió elérhető!');
-                                
-                                // Automatikus frissítés felajánlása
-                                if (confirm('Új verzió érhető el! Frissítsük most?')) {
-                                    newWorker.postMessage({ action: 'skipWaiting' });
-                                }
-                            }
-                        });
-                    });
-                })
-                .catch(err => console.error('❌ Service Worker hiba:', err));
-            
-            // Amikor az új Service Worker aktiválódik, töltsük újra az oldalt
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!refreshing) {
-                    refreshing = true;
-                    window.location.reload();
-                }
+    <script src="app.js"></script>
+    <script>
+        // Service Worker regisztráció (csak élesben, GitHub Pages-en)
+        if ('serviceWorker' in navigator && location.protocol === 'https:') {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('✅ Service Worker regisztrálva:', reg.scope))
+                    .catch(err => console.error('❌ Service Worker hiba:', err));
             });
-        });
-    }
-</script>
+        }
+    </script>
 </body>
 </html>

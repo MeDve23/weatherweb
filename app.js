@@ -1,9 +1,11 @@
 const API_KEY = 'b0a8907870c84d43cd9995146a01778e';
-const CARTO_API_KEY = 'cb1_3xlt_1_866e1ad8ced1178c18238cd8';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
+const CARTO_API_KEY = 'cb1_3xlt_1_866e1ad8ced1178c18238cd8';
+
 
 const cityInput = document.getElementById('cityInput');
 const searchBtn = document.getElementById('searchBtn');
+const geoBtn = document.getElementById('geoBtn');
 const currentWeatherCard = document.getElementById('currentWeatherCard');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const loadingText = document.getElementById('loadingText');
@@ -120,7 +122,6 @@ async function initMap() {
         attributionControl: true
     });
 
-    // Carto sötét térkép a saját API kulccsal
     L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
@@ -236,40 +237,27 @@ function focusMapOnCity(lat, lon, cityName, temp) {
 
 // --- API hívások ---
 async function fetchWeatherData(city) {
-    try {
-        showLoading();
-        const currentResponse = await fetch(`${BASE_URL}/weather?q=${city}&appid=${API_KEY}&units=metric&lang=hu`);
-        if (!currentResponse.ok) throw new Error('Város nem található');
-        const currentData = await currentResponse.json();
-        
-        const forecastResponse = await fetch(`${BASE_URL}/forecast?q=${city}&appid=${API_KEY}&units=metric&lang=hu`);
-        if (!forecastResponse.ok) throw new Error('Előrejelzési adatok nem elérhetők');
-        const forecastData = await forecastResponse.json();
-        
-        return { current: currentData, forecast: forecastData };
-    } catch (error) {
-        console.error('Hiba az adatok lekérése során:', error);
-        throw error;
-    }
+    const currentResponse = await fetch(`${BASE_URL}/weather?q=${city}&appid=${API_KEY}&units=metric&lang=hu`);
+    if (!currentResponse.ok) throw new Error('Város nem található');
+    const currentData = await currentResponse.json();
+    
+    const forecastResponse = await fetch(`${BASE_URL}/forecast?q=${city}&appid=${API_KEY}&units=metric&lang=hu`);
+    if (!forecastResponse.ok) throw new Error('Előrejelzési adatok nem elérhetők');
+    const forecastData = await forecastResponse.json();
+    
+    return { current: currentData, forecast: forecastData };
 }
 
 async function fetchWeatherByCoords(lat, lon) {
-    try {
-        showLoading();
-        loadingText.textContent = 'Időjárási adatok betöltése...';
-        const currentResponse = await fetch(`${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=hu`);
-        if (!currentResponse.ok) throw new Error('Helyadatok nem elérhetők');
-        const currentData = await currentResponse.json();
-        
-        const forecastResponse = await fetch(`${BASE_URL}/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=hu`);
-        if (!forecastResponse.ok) throw new Error('Előrejelzési adatok nem elérhetők');
-        const forecastData = await forecastResponse.json();
-        
-        return { current: currentData, forecast: forecastData };
-    } catch (error) {
-        console.error('Hiba az adatok lekérése során:', error);
-        throw error;
-    }
+    const currentResponse = await fetch(`${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=hu`);
+    if (!currentResponse.ok) throw new Error('Helyadatok nem elérhetők');
+    const currentData = await currentResponse.json();
+    
+    const forecastResponse = await fetch(`${BASE_URL}/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=hu`);
+    if (!forecastResponse.ok) throw new Error('Előrejelzési adatok nem elérhetők');
+    const forecastData = await forecastResponse.json();
+    
+    return { current: currentData, forecast: forecastData };
 }
 
 function getCurrentLocation() {
@@ -278,20 +266,35 @@ function getCurrentLocation() {
             reject(new Error('A böngésző nem támogatja a helymeghatározást'));
             return;
         }
-        loadingText.textContent = 'Helymeghatározás...';
+        
         navigator.geolocation.getCurrentPosition(
-            position => resolve({ lat: position.coords.latitude, lon: position.coords.longitude }),
+            position => resolve({ 
+                lat: position.coords.latitude, 
+                lon: position.coords.longitude 
+            }),
             error => {
                 let errorMessage;
                 switch (error.code) {
-                    case error.PERMISSION_DENIED: errorMessage = 'A helymeghatározás elutasítva.'; break;
-                    case error.POSITION_UNAVAILABLE: errorMessage = 'Helyinformáció nem elérhető.'; break;
-                    case error.TIMEOUT: errorMessage = 'A helymeghatározás túllépte az időkeretet.'; break;
-                    default: errorMessage = 'Ismeretlen hiba a helymeghatározás során.'; break;
+                    case error.PERMISSION_DENIED: 
+                        errorMessage = '❌ A helymeghatározást elutasítottad. Engedélyezd a böngésző beállításaiban!'; 
+                        break;
+                    case error.POSITION_UNAVAILABLE: 
+                        errorMessage = '❌ Helyinformáció nem elérhető.'; 
+                        break;
+                    case error.TIMEOUT: 
+                        errorMessage = '❌ A helymeghatározás túllépte az időkeretet.'; 
+                        break;
+                    default: 
+                        errorMessage = '❌ Ismeretlen hiba a helymeghatározás során.'; 
+                        break;
                 }
                 reject(new Error(errorMessage));
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+            { 
+                enableHighAccuracy: false,
+                timeout: 8000,
+                maximumAge: 300000
+            }
         );
     });
 }
@@ -488,13 +491,14 @@ function showError(message) {
     
     document.getElementById('retryButton').onclick = () => {
         errorIndicator.style.display = 'none';
-        initApp();
+        getWeatherData('Budapest');
     };
 }
 
 // --- Fő vezérlés ---
 async function getWeatherData(city) {
     try {
+        showLoading();
         currentLocationMethod = 'manual';
         const data = await fetchWeatherData(city);
         currentWeatherData = data;
@@ -504,24 +508,37 @@ async function getWeatherData(city) {
         await displayRadar(data);
         saveToHistory(city);
     } catch (error) {
+        console.error('Hiba:', error);
         showError(error.message);
     }
 }
 
 async function getWeatherByLocation() {
     try {
+        // Gomb loading állapot
+        geoBtn.classList.add('loading');
+        geoBtn.disabled = true;
+        
         currentLocationMethod = 'geolocation';
+        showLoading();
+        loadingText.textContent = 'Helymeghatározás...';
+        
         const coords = await getCurrentLocation();
+        loadingText.textContent = 'Időjárási adatok betöltése...';
+        
         const data = await fetchWeatherByCoords(coords.lat, coords.lon);
         currentWeatherData = data;
         displayCurrentWeather(data);
         displayForecast(data);
         displayHourlyForecast(data);
         await displayRadar(data);
-        saveToHistory(data.current.name);
+        // Geolokációnál NEM mentjük az előzményekbe (mert nincs városnév, csak koordináta)
     } catch (error) {
         console.error('Hiba a helymeghatározás során:', error);
-        showError(`${error.message} Kérjük, keressen rá egy városra manuálisan.`);
+        showError(error.message);
+    } finally {
+        geoBtn.classList.remove('loading');
+        geoBtn.disabled = false;
     }
 }
 
@@ -538,6 +555,10 @@ cityInput.addEventListener('keypress', (e) => {
     }
 });
 
+geoBtn.addEventListener('click', () => {
+    getWeatherByLocation();
+});
+
 // Radar gombok
 document.querySelectorAll('.radar-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -547,9 +568,18 @@ document.querySelectorAll('.radar-btn').forEach(btn => {
     });
 });
 
+// --- Indítás ---
 function initApp() {
     displayHistory();
-    getWeatherByLocation();
+    
+    // NEM hívjuk automatikusan a geolokációt! (böngésző blokkolja)
+    // Helyette az utolsó keresett várost, vagy Budapestet töltjük be
+    const history = JSON.parse(localStorage.getItem('weatherHistory')) || [];
+    if (history.length > 0) {
+        getWeatherData(history[0]);
+    } else {
+        getWeatherData('Budapest');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
