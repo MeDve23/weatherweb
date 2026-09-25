@@ -1,0 +1,26 @@
+{
+    "name": "FrissIdő WeatherWeb",
+    "short_name": "FrissIdő",
+    "description": "Modern időjárás előrejelző alkalmazás",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0b162c",
+    "theme_color": "#0b162c",
+    "lang": "hu",
+    "icons": [
+        {
+            "src": "logo.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
