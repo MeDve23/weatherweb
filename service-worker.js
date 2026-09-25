@@ -1,5 +1,5 @@
 // ⚠️ FONTOS: Minden feltöltés előtt növeld a verziószámot! (v1 → v2 → v3...)
-const CACHE_VERSION = 'v9';
+const CACHE_VERSION = 'v10';
 const CACHE_NAME = `frissido-${CACHE_VERSION}`;
 
 const ASSETS_TO_CACHE = [

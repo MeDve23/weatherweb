@@ -1,6 +1,7 @@
 const API_KEY = 'b0a8907870c84d43cd9995146a01778e';
-const CARTO_API_KEY = 'cb1_3xlt_1_866e1ad8ced1178c18238cd8';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
+const CARTO_API_KEY = 'cb1_3xlt_1_866e1ad8ced1178c18238cd8';
+
 
 const cityInput = document.getElementById('cityInput');
 const searchBtn = document.getElementById('searchBtn');
@@ -31,7 +32,6 @@ const forecastContainer = document.getElementById('forecastContainer');
 const hourlyContainer = document.getElementById('hourlyContainer');
 const locationMethod = document.getElementById('locationMethod');
 const toast = document.getElementById('toast');
-const pullIndicator = document.getElementById('pullIndicator');
 
 let currentWeatherData = null;
 let weatherChart = null;
@@ -101,7 +101,7 @@ function getWeatherIcon(iconCode) {
                 onerror="this.onerror=null; this.src='https://openweathermap.org/img/wn/${iconCode}@4x.png';">`;
 }
 
-// === UV INDEX ÉS LEVEGŐMINŐSÉG ===
+// === UV ÉS AQI ===
 function getUVDescription(uv) {
     if (uv <= 2) return 'Alacsony';
     if (uv <= 5) return 'Mérsékelt';
@@ -151,27 +151,20 @@ async function fetchRainViewerTimestamp() {
     }
 }
 
-// === TÉRKÉP INICIALIZÁLÁS (MOBIL-JAVÍTOTT) ===
+// === TÉRKÉP ===
 async function initMap() {
     if (weatherMap) return;
     
     const mapContainer = document.getElementById('weatherMap');
-    if (!mapContainer) {
-        console.warn('Nincs weatherMap konténer');
-        return;
-    }
+    if (!mapContainer) return;
     
-    // Megvárjuk, hogy a konténer látható legyen és legyen magassága
     let attempts = 0;
     while ((mapContainer.offsetHeight === 0 || mapContainer.offsetWidth === 0) && attempts < 20) {
         await new Promise(resolve => setTimeout(resolve, 100));
         attempts++;
     }
     
-    if (mapContainer.offsetHeight === 0) {
-        console.warn('A térkép konténer még mindig 0 magas');
-        return;
-    }
+    if (mapContainer.offsetHeight === 0) return;
     
     try {
         weatherMap = L.map('weatherMap', {
@@ -193,12 +186,11 @@ async function initMap() {
         await fetchRainViewerTimestamp();
         setRadarLayer('precipitation');
         
-        // Több invalidateSize hívás mobilon (a címsáv eltűnése/feltűnése miatt)
         setTimeout(() => weatherMap && weatherMap.invalidateSize(), 100);
         setTimeout(() => weatherMap && weatherMap.invalidateSize(), 500);
         setTimeout(() => weatherMap && weatherMap.invalidateSize(), 1000);
     } catch (err) {
-        console.error('Térkép inicializálási hiba:', err);
+        console.error('Térkép hiba:', err);
     }
 }
 
@@ -321,13 +313,11 @@ async function displayCurrentWeather(data) {
         ? '📍 GPS' 
         : '🔍 Keresés';
     
-    // UV index
     try {
         const uvValue = await fetchUVIndex(current.coord.lat, current.coord.lon);
-        uvIndex.textContent = uvValue !== null ? `${uvValue.toFixed(1)} · ${getUVDescription(uvValue)}` : '--';
+        uvIndex.textContent = uvValue !== null ? uvValue.toFixed(1) : '--';
     } catch { uvIndex.textContent = '--'; }
     
-    // Levegőminőség
     try {
         const aqi = await fetchAirQuality(current.coord.lat, current.coord.lon);
         airQuality.textContent = aqi !== null ? getAQIDescription(aqi) : '--';
@@ -443,21 +433,17 @@ function createTemperatureChart(hourlyData) {
     });
 }
 
-// === RADAR MEGJELENÍTÉS (MOBIL-JAVÍTOTT) ===
 async function displayRadar(data) {
     const { current } = data;
     
-    // Először láthatóvá tesszük a szekciót
     radarSection.style.display = 'block';
     
-    // Várunk, hogy a DOM kirajzolódjon, mielőtt a térképet inicializáljuk
     await new Promise(resolve => setTimeout(resolve, 200));
     
     if (!weatherMap) {
         await initMap();
     }
     
-    // Térkép középre állítása
     setTimeout(() => {
         if (weatherMap) {
             weatherMap.invalidateSize();
@@ -579,63 +565,6 @@ window.addEventListener('scroll', () => {
     }
 }, { passive: true });
 
-// === PULL TO REFRESH (biztonságos) ===
-let touchStartY = 0;
-let pullDistance = 0;
-let isPulling = false;
-const PULL_THRESHOLD = 100;
-
-document.addEventListener('touchstart', (e) => {
-    // Csak akkor, ha a lap tetején vagyunk
-    if (window.scrollY <= 0 && window.pageYOffset <= 0) {
-        touchStartY = e.touches[0].clientY;
-        isPulling = true;
-    }
-}, { passive: true });
-
-document.addEventListener('touchmove', (e) => {
-    if (!isPulling) return;
-    if (window.scrollY > 0) {
-        isPulling = false;
-        pullIndicator.classList.remove('active');
-        return;
-    }
-    
-    pullDistance = e.touches[0].clientY - touchStartY;
-    
-    // Csak lefelé húzásnál
-    if (pullDistance > 0 && pullDistance < 200) {
-        pullIndicator.classList.add('active');
-        const offset = Math.min(pullDistance - 50, 20);
-        pullIndicator.style.transform = `translateX(-50%) translateY(${offset}px)`;
-    }
-}, { passive: true });
-
-document.addEventListener('touchend', async () => {
-    if (!isPulling) {
-        touchStartY = 0;
-        pullDistance = 0;
-        return;
-    }
-    
-    if (pullDistance > PULL_THRESHOLD) {
-        pullIndicator.style.transform = 'translateX(-50%) translateY(0)';
-        vibrate(30);
-        
-        if (currentWeatherData && currentWeatherData.current) {
-            const city = currentWeatherData.current.name;
-            await getWeatherData(city);
-            showToast('🔄 Frissítve!', 'success', 1500);
-        }
-    }
-    
-    pullIndicator.classList.remove('active');
-    pullIndicator.style.transform = '';
-    touchStartY = 0;
-    pullDistance = 0;
-    isPulling = false;
-}, { passive: true });
-
 // === ESEMÉNYKEZELŐK ===
 searchBtn.addEventListener('click', () => {
     vibrate(20);
@@ -667,7 +596,7 @@ document.querySelectorAll('.radar-btn').forEach(btn => {
     });
 });
 
-// Ablak átméretezés (mobil címsáv változás)
+// Ablak átméretezés
 window.addEventListener('resize', () => {
     if (weatherMap) {
         setTimeout(() => weatherMap.invalidateSize(), 200);
@@ -685,7 +614,6 @@ function initApp() {
         getWeatherData('Budapest');
     }
     
-    // Online/offline állapot
     window.addEventListener('online', () => showToast('🌐 Újra online', 'success', 2000));
     window.addEventListener('offline', () => showToast('📵 Offline mód', 'info', 2000));
 }
