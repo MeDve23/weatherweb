@@ -26,6 +26,8 @@ const tempMin = document.getElementById('tempMin');
 const tempMax = document.getElementById('tempMax');
 const sunrise = document.getElementById('sunrise');
 const sunset = document.getElementById('sunset');
+const moonIcon = document.getElementById('moonIcon');
+const moonPhase = document.getElementById('moonPhase');
 const uvIndex = document.getElementById('uvIndex');
 const airQuality = document.getElementById('airQuality');
 const forecastContainer = document.getElementById('forecastContainer');
@@ -37,7 +39,6 @@ let currentWeatherData = null;
 let weatherChart = null;
 let currentLocationMethod = 'manual';
 
-// Térkép változók
 let weatherMap = null;
 let currentLayer = null;
 let mapMarker = null;
@@ -49,14 +50,10 @@ function showToast(message, type = 'info', duration = 3000) {
     if (!toast) return;
     toast.textContent = message;
     toast.className = `toast ${type} show`;
-    
     clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => {
-        toast.classList.remove('show');
-    }, duration);
+    toast._timer = setTimeout(() => toast.classList.remove('show'), duration);
 }
 
-// === REZGÉS ===
 function vibrate(pattern = 30) {
     if ('vibrate' in navigator) {
         try { navigator.vibrate(pattern); } catch(e) {}
@@ -67,11 +64,7 @@ function vibrate(pattern = 30) {
 function formatDate(timestamp, options = {}) {
     const date = new Date(timestamp * 1000);
     return date.toLocaleDateString('hu-HU', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        ...options
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', ...options
     });
 }
 
@@ -93,23 +86,129 @@ function getWeatherIcon(iconCode) {
         '13d': 'snow', '13n': 'snow',
         '50d': 'fog', '50n': 'fog'
     };
-    
     const iconName = iconMap[iconCode] || 'cloudy';
     const iconUrl = `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconName}.svg`;
-    
     return `<img src="${iconUrl}" alt="Időjárás ikon" class="weather-icon-img" loading="lazy"
                 onerror="this.onerror=null; this.src='https://openweathermap.org/img/wn/${iconCode}@4x.png';">`;
 }
 
-// === UV ÉS AQI ===
-function getUVDescription(uv) {
-    if (uv <= 2) return 'Alacsony';
-    if (uv <= 5) return 'Mérsékelt';
-    if (uv <= 7) return 'Magas';
-    if (uv <= 10) return 'Nagyon magas';
-    return 'Extrém';
+function getWMOIconName(code) {
+    if (code === 0) return 'clear-day';
+    if (code <= 2) return 'partly-cloudy-day';
+    if (code === 3) return 'overcast';
+    if (code <= 48) return 'fog';
+    if (code <= 67) return 'rain';
+    if (code <= 77) return 'snow';
+    if (code <= 82) return 'rain';
+    if (code <= 86) return 'snow';
+    if (code >= 95) return 'thunderstorms';
+    return 'cloudy';
 }
 
+function getWMOIcon(code) {
+    const iconName = getWMOIconName(code);
+    const iconUrl = `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconName}.svg`;
+    return `<img src="${iconUrl}" alt="Időjárás ikon" class="weather-icon-img" loading="lazy">`;
+}
+
+function getWMODescription(code) {
+    const descriptions = {
+        0: 'tiszta ég', 1: 'többnyire tiszta', 2: 'részben felhős', 3: 'borult',
+        45: 'köd', 48: 'zúzmarás köd',
+        51: 'szitálás', 53: 'szitálás', 55: 'erős szitálás',
+        56: 'fagyos szitálás', 57: 'fagyos szitálás',
+        61: 'enyhe eső', 63: 'eső', 65: 'erős eső',
+        66: 'fagyos eső', 67: 'fagyos eső',
+        71: 'enyhe hó', 73: 'hó', 75: 'erős hó', 77: 'hószemek',
+        80: 'záporok', 81: 'záporok', 82: 'erős záporok',
+        85: 'hózáporok', 86: 'erős hózáporok',
+        95: 'zivatar', 96: 'zivatar jéggel', 99: 'zivatar jéggel'
+    };
+    return descriptions[code] || 'ismeretlen';
+}
+
+// === HOLDFÁZIS ===
+function getMoonPhase(date = new Date()) {
+    let year = date.getFullYear();
+    let month = date.getMonth() + 1;
+    const day = date.getDate();
+    let c = 0, e = 0, jd = 0, b = 0;
+    if (month < 3) { year--; month += 12; }
+    month++;
+    c = 365.25 * year;
+    e = 30.6 * month;
+    jd = c + e + day - 694039.09;
+    jd /= 29.5305882;
+    b = parseInt(jd);
+    jd -= b;
+    b = Math.round(jd * 8);
+    if (b >= 8) b = 0;
+    return b;
+}
+
+function getMoonPhaseInfo(phase) {
+    const phases = [
+        { name: 'Újhold', icon: '🌑' },
+        { name: 'Növő', icon: '🌒' },
+        { name: 'Első n.', icon: '🌓' },
+        { name: 'Növő', icon: '🌔' },
+        { name: 'Telihold', icon: '🌕' },
+        { name: 'Fogyó', icon: '🌖' },
+        { name: 'Utolsó n.', icon: '🌗' },
+        { name: 'Fogyó', icon: '🌘' }
+    ];
+    return phases[phase];
+}
+
+// === DINAMIKUS HÁTTÉR ===
+function updateWeatherBackground(iconCode) {
+    const weatherBg = document.getElementById('weatherBg');
+    if (!weatherBg) return;
+    
+    const code = iconCode.substring(0, 2);
+    const isDay = iconCode.endsWith('d');
+    let gradient = '';
+    
+    switch (code) {
+        case '01':
+            gradient = isDay
+                ? 'linear-gradient(180deg, #0b162c 0%, #1a4f7a 40%, #3b82f6 75%, #fbbf24 100%)'
+                : 'linear-gradient(180deg, #050810 0%, #0a0e1f 40%, #1a1a3a 70%, #2d1b4e 100%)';
+            break;
+        case '02':
+            gradient = isDay
+                ? 'linear-gradient(180deg, #0b162c 0%, #1e3a5a 50%, #4a7ba8 100%)'
+                : 'linear-gradient(180deg, #050810 0%, #0f1a2a 50%, #2a3a5a 100%)';
+            break;
+        case '03':
+        case '04':
+            gradient = isDay
+                ? 'linear-gradient(180deg, #0b162c 0%, #2a3a4a 50%, #5a6a7a 100%)'
+                : 'linear-gradient(180deg, #050810 0%, #1a2a3a 50%, #3a4a5a 100%)';
+            break;
+        case '09':
+        case '10':
+            gradient = 'linear-gradient(180deg, #050810 0%, #0f1a2a 40%, #1a3a5a 70%, #2a5a7a 100%)';
+            break;
+        case '11':
+            gradient = 'linear-gradient(180deg, #050810 0%, #0f0a1a 40%, #2a1a3a 70%, #4a2a4a 100%)';
+            break;
+        case '13':
+            gradient = isDay
+                ? 'linear-gradient(180deg, #0b162c 0%, #2a3a5a 50%, #7a8aaa 100%)'
+                : 'linear-gradient(180deg, #050810 0%, #1a2a4a 50%, #4a5a7a 100%)';
+            break;
+        case '50':
+            gradient = 'linear-gradient(180deg, #0b162c 0%, #3a4a5a 50%, #6a7a8a 100%)';
+            break;
+        default:
+            gradient = 'linear-gradient(180deg, #0b162c 0%, #050810 100%)';
+    }
+    
+    document.documentElement.style.setProperty('--weather-gradient', gradient);
+}
+
+// === UV ÉS AQI ===
 function getAQIDescription(aqi) {
     const map = { 1: 'Jó', 2: 'Elfogadható', 3: 'Mérsékelt', 4: 'Rossz', 5: 'Nagyon rossz' };
     return map[aqi] || '--';
@@ -118,13 +217,10 @@ function getAQIDescription(aqi) {
 async function fetchAirQuality(lat, lon) {
     try {
         const response = await fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`);
-        if (!response.ok) throw new Error('AQI nem elérhető');
+        if (!response.ok) throw new Error('AQI hiba');
         const data = await response.json();
         return data.list[0].main.aqi;
-    } catch (e) {
-        console.warn('AQI hiba:', e);
-        return null;
-    }
+    } catch { return null; }
 }
 
 async function fetchUVIndex(lat, lon) {
@@ -133,6 +229,20 @@ async function fetchUVIndex(lat, lon) {
         const data = await response.json();
         return data.current?.uv_index ?? null;
     } catch { return null; }
+}
+
+// === 7 NAPOS ===
+async function fetchExtendedForecast(lat, lon) {
+    try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Open-Meteo hiba');
+        const data = await response.json();
+        return data.daily;
+    } catch (error) {
+        console.warn('Open-Meteo hiba:', error);
+        return null;
+    }
 }
 
 // === RAINVIEWER ===
@@ -154,7 +264,6 @@ async function fetchRainViewerTimestamp() {
 // === TÉRKÉP ===
 async function initMap() {
     if (weatherMap) return;
-    
     const mapContainer = document.getElementById('weatherMap');
     if (!mapContainer) return;
     
@@ -163,24 +272,17 @@ async function initMap() {
         await new Promise(resolve => setTimeout(resolve, 100));
         attempts++;
     }
-    
     if (mapContainer.offsetHeight === 0) return;
     
     try {
         weatherMap = L.map('weatherMap', {
-            center: [47.1625, 19.5033],
-            zoom: 6,
-            minZoom: 3,
-            maxZoom: 18,
-            zoomControl: true,
-            attributionControl: true
+            center: [47.1625, 19.5033], zoom: 6, minZoom: 3, maxZoom: 18,
+            zoomControl: true, attributionControl: true
         });
 
         L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`, {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 18,
-            maxNativeZoom: 18
+            subdomains: 'abcd', maxZoom: 18, maxNativeZoom: 18
         }).addTo(weatherMap);
 
         await fetchRainViewerTimestamp();
@@ -202,8 +304,7 @@ function setRadarLayer(layerType) {
         case 'precipitation': {
             const path = rainviewerPath || '/v2/radar/nowcast';
             currentLayer = L.tileLayer(`${rainviewerHost}${path}/256/{z}/{x}/{y}/2/1_1.png`, {
-                opacity: 0.7,
-                attribution: '&copy; <a href="https://www.rainviewer.com/">RainViewer</a>',
+                opacity: 0.7, attribution: '&copy; <a href="https://www.rainviewer.com/">RainViewer</a>',
                 zIndex: 10, maxNativeZoom: 10, maxZoom: 18
             });
             break;
@@ -250,7 +351,6 @@ async function fetchWeatherData(city) {
     ]);
     if (!currentResponse.ok) throw new Error('Város nem található');
     if (!forecastResponse.ok) throw new Error('Előrejelzés nem elérhető');
-    
     const [current, forecast] = await Promise.all([currentResponse.json(), forecastResponse.json()]);
     return { current, forecast };
 }
@@ -262,7 +362,6 @@ async function fetchWeatherByCoords(lat, lon) {
     ]);
     if (!currentResponse.ok) throw new Error('Helyadatok nem elérhetők');
     if (!forecastResponse.ok) throw new Error('Előrejelzés nem elérhető');
-    
     const [current, forecast] = await Promise.all([currentResponse.json(), forecastResponse.json()]);
     return { current, forecast };
 }
@@ -270,7 +369,6 @@ async function fetchWeatherByCoords(lat, lon) {
 function getCurrentLocation() {
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) return reject(new Error('Nincs helymeghatározás'));
-        
         navigator.geolocation.getCurrentPosition(
             position => resolve({ lat: position.coords.latitude, lon: position.coords.longitude }),
             error => {
@@ -309,9 +407,14 @@ async function displayCurrentWeather(data) {
     sunrise.textContent = formatTime(current.sys.sunrise);
     sunset.textContent = formatTime(current.sys.sunset);
     
-    locationMethod.textContent = currentLocationMethod === 'geolocation' 
-        ? '📍 GPS' 
-        : '🔍 Keresés';
+    const phase = getMoonPhase();
+    const moonInfo = getMoonPhaseInfo(phase);
+    moonIcon.textContent = moonInfo.icon;
+    moonPhase.textContent = moonInfo.name;
+    
+    locationMethod.textContent = currentLocationMethod === 'geolocation' ? '📍 GPS' : '🔍 Keresés';
+    
+    updateWeatherBackground(current.weather[0].icon);
     
     try {
         const uvValue = await fetchUVIndex(current.coord.lat, current.coord.lon);
@@ -327,7 +430,45 @@ async function displayCurrentWeather(data) {
     currentWeatherCard.style.display = 'block';
 }
 
-function displayForecast(data) {
+async function displayExtendedForecast(lat, lon) {
+    const daily = await fetchExtendedForecast(lat, lon);
+    if (!daily) return false;
+    
+    forecastContainer.innerHTML = '';
+    
+    daily.time.forEach((dateStr, index) => {
+        const code = daily.weather_code[index];
+        const tMax = Math.round(daily.temperature_2m_max[index]);
+        const tMin = Math.round(daily.temperature_2m_min[index]);
+        
+        const date = new Date(dateStr);
+        const isToday = index === 0;
+        
+        const card = document.createElement('div');
+        card.className = 'forecast-card' + (isToday ? ' today' : '');
+        card.style.animationDelay = `${index * 0.05}s`;
+        
+        const dateLabel = isToday
+            ? 'Ma'
+            : date.toLocaleDateString('hu-HU', { weekday: 'short', month: 'short', day: 'numeric' });
+        
+        card.innerHTML = `
+            <div class="forecast-date">${dateLabel}</div>
+            <div class="forecast-icon">${getWMOIcon(code)}</div>
+            <div class="forecast-temp">
+                <span class="forecast-temp-max">${tMax}°</span>
+                <span class="forecast-temp-min">${tMin}°</span>
+            </div>
+            <div class="forecast-description">${getWMODescription(code)}</div>
+        `;
+        forecastContainer.appendChild(card);
+    });
+    
+    forecastSection.style.display = 'block';
+    return true;
+}
+
+function displayForecastOWM(data) {
     const { forecast } = data;
     const dailyForecasts = forecast.list.filter(item => item.dt_txt.includes('12:00:00')).slice(0, 5);
     forecastContainer.innerHTML = '';
@@ -339,7 +480,10 @@ function displayForecast(data) {
         card.innerHTML = `
             <div class="forecast-date">${formatDate(day.dt, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
             <div class="forecast-icon">${getWeatherIcon(day.weather[0].icon)}</div>
-            <div class="forecast-temp">${Math.round(day.main.temp)}°</div>
+            <div class="forecast-temp">
+                <span class="forecast-temp-max">${Math.round(day.main.temp)}°</span>
+                <span class="forecast-temp-min">${Math.round(day.main.temp_min)}°</span>
+            </div>
             <div class="forecast-description">${day.weather[0].description}</div>
         `;
         forecastContainer.appendChild(card);
@@ -407,27 +551,15 @@ function createTemperatureChart(hourlyData) {
                 legend: { display: false },
                 tooltip: {
                     backgroundColor: 'rgba(30, 41, 59, 0.95)',
-                    titleColor: '#f8fafc',
-                    bodyColor: '#38bdf8',
-                    borderColor: '#38bdf8',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8,
-                    displayColors: false,
-                    titleFont: { size: 12 },
-                    bodyFont: { size: 14, weight: 'bold' }
+                    titleColor: '#f8fafc', bodyColor: '#38bdf8',
+                    borderColor: '#38bdf8', borderWidth: 1,
+                    padding: 10, cornerRadius: 8, displayColors: false,
+                    titleFont: { size: 12 }, bodyFont: { size: 14, weight: 'bold' }
                 }
             },
             scales: {
-                y: {
-                    beginAtZero: false,
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8', font: { size: 10 } }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94a3b8', font: { size: 10 } }
-                }
+                y: { beginAtZero: false, grid: { color: 'rgba(148, 163, 184, 0.1)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } }
             }
         }
     });
@@ -435,15 +567,9 @@ function createTemperatureChart(hourlyData) {
 
 async function displayRadar(data) {
     const { current } = data;
-    
     radarSection.style.display = 'block';
-    
     await new Promise(resolve => setTimeout(resolve, 200));
-    
-    if (!weatherMap) {
-        await initMap();
-    }
-    
+    if (!weatherMap) await initMap();
     setTimeout(() => {
         if (weatherMap) {
             weatherMap.invalidateSize();
@@ -504,7 +630,10 @@ async function getWeatherData(city) {
         currentWeatherData = data;
         
         await displayCurrentWeather(data);
-        displayForecast(data);
+        
+        const extendedOk = await displayExtendedForecast(data.current.coord.lat, data.current.coord.lon);
+        if (!extendedOk) displayForecastOWM(data);
+        
         displayHourlyForecast(data);
         await displayRadar(data);
         saveToHistory(city);
@@ -529,7 +658,10 @@ async function getWeatherByLocation() {
         currentWeatherData = data;
         
         await displayCurrentWeather(data);
-        displayForecast(data);
+        
+        const extendedOk = await displayExtendedForecast(data.current.coord.lat, data.current.coord.lon);
+        if (!extendedOk) displayForecastOWM(data);
+        
         displayHourlyForecast(data);
         await displayRadar(data);
         hideLoading();
@@ -545,7 +677,7 @@ async function getWeatherByLocation() {
     }
 }
 
-// === HEADER ELREJTÉS GÖRGETÉSKOR ===
+// === HEADER ELREJTÉS ===
 let lastScrollY = window.scrollY;
 let ticking = false;
 
@@ -586,7 +718,6 @@ geoBtn.addEventListener('click', () => {
     getWeatherByLocation();
 });
 
-// Radar gombok
 document.querySelectorAll('.radar-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         vibrate(15);
@@ -596,11 +727,8 @@ document.querySelectorAll('.radar-btn').forEach(btn => {
     });
 });
 
-// Ablak átméretezés
 window.addEventListener('resize', () => {
-    if (weatherMap) {
-        setTimeout(() => weatherMap.invalidateSize(), 200);
-    }
+    if (weatherMap) setTimeout(() => weatherMap.invalidateSize(), 200);
 });
 
 // === INDÍTÁS ===
